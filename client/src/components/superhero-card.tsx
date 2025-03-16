@@ -19,6 +19,8 @@ export function SuperheroCard({
   onToggleCompare,
   isInCompare 
 }: SuperheroCardProps) {
+  console.log(`SuperheroCard - Rendering ${hero.name}, isInCompare:`, isInCompare);
+
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow">
       <div className="aspect-square relative">
@@ -35,6 +37,7 @@ export function SuperheroCard({
               className={`${isInCompare ? 'text-primary' : 'text-gray-500'}`}
               onClick={(e) => {
                 e.preventDefault();
+                e.stopPropagation();
                 onToggleCompare();
               }}
             >
@@ -47,6 +50,7 @@ export function SuperheroCard({
             className={`${isFavorite ? 'text-red-500' : 'text-gray-500'}`}
             onClick={(e) => {
               e.preventDefault();
+              e.stopPropagation();
               onToggleFavorite();
             }}
           >

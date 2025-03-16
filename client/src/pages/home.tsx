@@ -20,6 +20,7 @@ export default function Home() {
   });
 
   const { compareList } = useCompare();
+  console.log('Home component - compareList length:', compareList.length);
 
   const { data, isLoading, error } = useQuery<SearchResponse>({
     queryKey: ["/api/search", searchParams.term],
@@ -41,6 +42,24 @@ export default function Home() {
     );
   });
 
+  // Force re-render when compareList changes
+  const CompareButton = () => {
+    console.log('Rendering CompareButton - compareList length:', compareList.length);
+    if (compareList.length === 0) return null;
+
+    return (
+      <Link href="/compare">
+        <Button 
+          variant="outline" 
+          className="animate-in fade-in duration-300"
+        >
+          <BarChart2 className="mr-2 h-4 w-4" />
+          Compare ({compareList.length})
+        </Button>
+      </Link>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <main className="container mx-auto px-4 py-8">
@@ -49,14 +68,7 @@ export default function Home() {
             Superhero Search
           </h1>
           <div className="flex gap-2">
-            {compareList.length > 0 && (
-              <Link href="/compare">
-                <Button variant="outline" className="animate-in fade-in duration-300">
-                  <BarChart2 className="mr-2 h-4 w-4" />
-                  Compare ({compareList.length})
-                </Button>
-              </Link>
-            )}
+            <CompareButton />
             <Link href="/favorites">
               <Button variant="outline">
                 <Heart className="mr-2 h-4 w-4" />
