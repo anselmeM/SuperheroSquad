@@ -30,12 +30,14 @@ export function SuperheroCard({
         <div className="absolute top-2 right-2 flex gap-2">
           {onToggleCompare && (
             <Button
-              variant="ghost"
+              variant={isInCompare ? "default" : "ghost"}
               size="icon"
-              className={`${isInCompare ? 'text-primary' : 'text-gray-500'}`}
+              className={`transition-colors duration-200 ${
+                isInCompare ? 'bg-primary text-primary-foreground' : 'text-gray-500 hover:text-primary'
+              }`}
               onClick={onToggleCompare}
             >
-              <BarChart2 className={`h-6 w-6 ${isInCompare ? 'fill-current' : ''}`} />
+              <BarChart2 className="h-6 w-6" />
             </Button>
           )}
           <Button
