@@ -1,16 +1,24 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { Heart } from "lucide-react";
+import { Heart, BarChart2 } from "lucide-react";
 import { type Superhero } from "@shared/schema";
 
 interface SuperheroCardProps {
   hero: Superhero;
   isFavorite: boolean;
   onToggleFavorite: () => void;
+  onToggleCompare?: () => void;
+  isInCompare?: boolean;
 }
 
-export function SuperheroCard({ hero, isFavorite, onToggleFavorite }: SuperheroCardProps) {
+export function SuperheroCard({ 
+  hero, 
+  isFavorite, 
+  onToggleFavorite,
+  onToggleCompare,
+  isInCompare 
+}: SuperheroCardProps) {
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow">
       <div className="aspect-square relative">
@@ -19,14 +27,26 @@ export function SuperheroCard({ hero, isFavorite, onToggleFavorite }: SuperheroC
           alt={hero.name}
           className="object-cover w-full h-full"
         />
-        <Button
-          variant="ghost"
-          size="icon"
-          className={`absolute top-2 right-2 ${isFavorite ? 'text-red-500' : 'text-gray-500'}`}
-          onClick={onToggleFavorite}
-        >
-          <Heart className={`h-6 w-6 ${isFavorite ? 'fill-current' : ''}`} />
-        </Button>
+        <div className="absolute top-2 right-2 flex gap-2">
+          {onToggleCompare && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className={`${isInCompare ? 'text-primary' : 'text-gray-500'}`}
+              onClick={onToggleCompare}
+            >
+              <BarChart2 className={`h-6 w-6 ${isInCompare ? 'fill-current' : ''}`} />
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            className={`${isFavorite ? 'text-red-500' : 'text-gray-500'}`}
+            onClick={onToggleFavorite}
+          >
+            <Heart className={`h-6 w-6 ${isFavorite ? 'fill-current' : ''}`} />
+          </Button>
+        </div>
       </div>
       <CardHeader className="pb-2">
         <h3 className="text-xl font-semibold">{hero.name}</h3>

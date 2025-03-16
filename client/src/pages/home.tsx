@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { SearchBar, type SearchParams } from "@/components/search-bar";
 import { SuperheroGrid } from "@/components/superhero-grid";
 import { type SearchResponse, type Superhero } from "@shared/schema";
-import { Heart } from "lucide-react";
+import { Heart, BarChart2 } from "lucide-react";
+import { useCompare } from "@/hooks/use-compare";
 
 export default function Home() {
   const [searchParams, setSearchParams] = useState<SearchParams>({
@@ -17,6 +18,8 @@ export default function Home() {
       minPower: 0,
     },
   });
+
+  const { compareList } = useCompare();
 
   const { data, isLoading, error } = useQuery<SearchResponse>({
     queryKey: ["/api/search", searchParams.term],
@@ -45,12 +48,22 @@ export default function Home() {
           <h1 className="text-4xl font-bold bg-gradient-to-r from-primary/80 to-primary bg-clip-text text-transparent">
             Superhero Search
           </h1>
-          <Link href="/favorites">
-            <Button variant="outline">
-              <Heart className="mr-2 h-4 w-4" />
-              Favorites
-            </Button>
-          </Link>
+          <div className="flex gap-2">
+            {compareList.length > 0 && (
+              <Link href="/compare">
+                <Button variant="outline">
+                  <BarChart2 className="mr-2 h-4 w-4" />
+                  Compare ({compareList.length})
+                </Button>
+              </Link>
+            )}
+            <Link href="/favorites">
+              <Button variant="outline">
+                <Heart className="mr-2 h-4 w-4" />
+                Favorites
+              </Button>
+            </Link>
+          </div>
         </div>
 
         <div className="max-w-2xl mx-auto mb-12">

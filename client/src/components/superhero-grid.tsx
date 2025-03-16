@@ -4,6 +4,7 @@ import { AlertCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { type Superhero } from "@shared/schema";
 import { useFavorites } from "@/hooks/use-favorites";
+import { useCompare } from "@/hooks/use-compare";
 
 interface SuperheroGridProps {
   heroes: Superhero[];
@@ -13,6 +14,7 @@ interface SuperheroGridProps {
 
 export function SuperheroGrid({ heroes, isLoading, error }: SuperheroGridProps) {
   const { isFavorite, addFavorite, removeFavorite } = useFavorites();
+  const { isInCompare, addToCompare, removeFromCompare, canAddMore } = useCompare();
 
   if (error) {
     return (
@@ -57,6 +59,12 @@ export function SuperheroGrid({ heroes, isLoading, error }: SuperheroGridProps) 
             isFavorite(hero.id) 
               ? removeFavorite(hero.id)
               : addFavorite(hero)
+          }
+          isInCompare={isInCompare(hero.id)}
+          onToggleCompare={() =>
+            isInCompare(hero.id)
+              ? removeFromCompare(hero.id)
+              : canAddMore && addToCompare(hero)
           }
         />
       ))}
