@@ -19,6 +19,7 @@ export function SuperheroGrid({ heroes, isLoading, error }: SuperheroGridProps) 
   const { toast } = useToast();
 
   const handleCompareToggle = (hero: Superhero) => {
+    console.log('Toggling compare for hero:', hero.name);
     if (isInCompare(hero.id)) {
       removeFromCompare(hero.id);
       toast({
@@ -76,20 +77,25 @@ export function SuperheroGrid({ heroes, isLoading, error }: SuperheroGridProps) 
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-      {heroes.map((hero) => (
-        <SuperheroCard 
-          key={hero.id} 
-          hero={hero}
-          isFavorite={isFavorite(hero.id)}
-          onToggleFavorite={() => 
-            isFavorite(hero.id) 
-              ? removeFavorite(hero.id)
-              : addFavorite(hero)
-          }
-          isInCompare={isInCompare(hero.id)}
-          onToggleCompare={() => handleCompareToggle(hero)}
-        />
-      ))}
+      {heroes.map((hero) => {
+        const isCompared = isInCompare(hero.id);
+        console.log(`Rendering hero ${hero.name}, isInCompare:`, isCompared);
+
+        return (
+          <SuperheroCard 
+            key={hero.id} 
+            hero={hero}
+            isFavorite={isFavorite(hero.id)}
+            onToggleFavorite={() => 
+              isFavorite(hero.id) 
+                ? removeFavorite(hero.id)
+                : addFavorite(hero)
+            }
+            isInCompare={isCompared}
+            onToggleCompare={() => handleCompareToggle(hero)}
+          />
+        );
+      })}
     </div>
   );
 }
