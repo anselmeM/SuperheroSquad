@@ -2,12 +2,24 @@ import { z } from "zod";
 
 // Superhero API response schemas
 export const powerStatsSchema = z.object({
-  intelligence: z.number(),
-  strength: z.number(),
-  speed: z.number(),
-  durability: z.number(),
-  power: z.number(),
-  combat: z.number()
+  intelligence: z.union([z.number(), z.string()]).transform(val => 
+    typeof val === 'string' ? parseInt(val) || 0 : val
+  ),
+  strength: z.union([z.number(), z.string()]).transform(val => 
+    typeof val === 'string' ? parseInt(val) || 0 : val
+  ),
+  speed: z.union([z.number(), z.string()]).transform(val => 
+    typeof val === 'string' ? parseInt(val) || 0 : val
+  ),
+  durability: z.union([z.number(), z.string()]).transform(val => 
+    typeof val === 'string' ? parseInt(val) || 0 : val
+  ),
+  power: z.union([z.number(), z.string()]).transform(val => 
+    typeof val === 'string' ? parseInt(val) || 0 : val
+  ),
+  combat: z.union([z.number(), z.string()]).transform(val => 
+    typeof val === 'string' ? parseInt(val) || 0 : val
+  )
 });
 
 export const superheroSchema = z.object({
@@ -20,8 +32,10 @@ export const superheroSchema = z.object({
 });
 
 export const searchResponseSchema = z.object({
+  response: z.string(),
   results: z.array(superheroSchema).optional(),
-  error: z.string().optional()
+  error: z.string().optional(),
+  "results-for": z.string().optional()
 });
 
 export type PowerStats = z.infer<typeof powerStatsSchema>;

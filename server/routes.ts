@@ -4,26 +4,35 @@ import { searchResponseSchema } from "@shared/schema";
 import { ZodError } from "zod";
 
 const API_TOKEN = process.env.SUPERHERO_API_TOKEN || "e2f8ee39a6603445c2dd55dd9d8ab2d4";
-const API_BASE_URL = "https://superheroapi.com/api";
+const API_BASE_URL = "https://superheroapi.com/api.php";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/search", async (req, res) => {
     try {
       const { query } = req.query;
-      
+
       if (!query || typeof query !== "string") {
         return res.status(400).json({ error: "Search query is required" });
       }
 
       const response = await fetch(`${API_BASE_URL}/${API_TOKEN}/search/${encodeURIComponent(query)}`);
       const data = await response.json();
-      
+
+      console.log('API Response:', JSON.stringify(data, null, 2));
+
       // Validate response data
       const validatedData = await searchResponseSchema.parseAsync(data);
+
+      // If the API returns an error response
+      if (validatedData.response === 'error') {
+        return res.status(404).json({ error: validatedData.error || 'No results found' });
+      }
+
       res.json(validatedData);
     } catch (error) {
+      console.error('Search error:', error);
       if (error instanceof ZodError) {
-        res.status(500).json({ error: "Invalid API response format" });
+        res.status(500).json({ error: "Invalid API response format", details: error.errors });
       } else {
         res.status(500).json({ error: "Failed to fetch superhero data" });
       }
