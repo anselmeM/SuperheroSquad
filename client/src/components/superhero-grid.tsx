@@ -3,6 +3,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { type Superhero } from "@shared/schema";
+import { useFavorites } from "@/hooks/use-favorites";
 
 interface SuperheroGridProps {
   heroes: Superhero[];
@@ -11,6 +12,8 @@ interface SuperheroGridProps {
 }
 
 export function SuperheroGrid({ heroes, isLoading, error }: SuperheroGridProps) {
+  const { isFavorite, addFavorite, removeFavorite } = useFavorites();
+
   if (error) {
     return (
       <Alert variant="destructive">
@@ -46,7 +49,16 @@ export function SuperheroGrid({ heroes, isLoading, error }: SuperheroGridProps) 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
       {heroes.map((hero) => (
-        <SuperheroCard key={hero.id} hero={hero} />
+        <SuperheroCard 
+          key={hero.id} 
+          hero={hero}
+          isFavorite={isFavorite(hero.id)}
+          onToggleFavorite={() => 
+            isFavorite(hero.id) 
+              ? removeFavorite(hero.id)
+              : addFavorite(hero)
+          }
+        />
       ))}
     </div>
   );

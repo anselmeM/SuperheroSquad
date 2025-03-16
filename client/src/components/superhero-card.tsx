@@ -1,12 +1,16 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import { Heart } from "lucide-react";
 import { type Superhero } from "@shared/schema";
 
 interface SuperheroCardProps {
   hero: Superhero;
+  isFavorite: boolean;
+  onToggleFavorite: () => void;
 }
 
-export function SuperheroCard({ hero }: SuperheroCardProps) {
+export function SuperheroCard({ hero, isFavorite, onToggleFavorite }: SuperheroCardProps) {
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow">
       <div className="aspect-square relative">
@@ -15,6 +19,14 @@ export function SuperheroCard({ hero }: SuperheroCardProps) {
           alt={hero.name}
           className="object-cover w-full h-full"
         />
+        <Button
+          variant="ghost"
+          size="icon"
+          className={`absolute top-2 right-2 ${isFavorite ? 'text-red-500' : 'text-gray-500'}`}
+          onClick={onToggleFavorite}
+        >
+          <Heart className={`h-6 w-6 ${isFavorite ? 'fill-current' : ''}`} />
+        </Button>
       </div>
       <CardHeader className="pb-2">
         <h3 className="text-xl font-semibold">{hero.name}</h3>

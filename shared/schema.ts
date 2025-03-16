@@ -38,6 +38,15 @@ export const searchResponseSchema = z.object({
   "results-for": z.string().optional()
 });
 
+// Favorites related schemas
+export const favoriteSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  imageUrl: z.string(),
+  addedAt: z.string()
+});
+
 export type PowerStats = z.infer<typeof powerStatsSchema>;
 export type Superhero = z.infer<typeof superheroSchema>;
 export type SearchResponse = z.infer<typeof searchResponseSchema>;
+export type Favorite = z.infer<typeof favoriteSchema>;
