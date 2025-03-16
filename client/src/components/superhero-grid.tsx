@@ -21,6 +21,10 @@ export function SuperheroGrid({ heroes, isLoading, error }: SuperheroGridProps) 
   const handleCompareToggle = (hero: Superhero) => {
     if (isInCompare(hero.id)) {
       removeFromCompare(hero.id);
+      toast({
+        title: "Removed from comparison",
+        description: `${hero.name} has been removed from comparison.`,
+      });
     } else {
       if (!canAddMore) {
         toast({
@@ -31,6 +35,10 @@ export function SuperheroGrid({ heroes, isLoading, error }: SuperheroGridProps) 
         return;
       }
       addToCompare(hero);
+      toast({
+        title: "Added to comparison",
+        description: `${hero.name} has been added to comparison.`,
+      });
     }
   };
 

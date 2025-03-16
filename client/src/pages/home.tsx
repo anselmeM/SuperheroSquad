@@ -51,7 +51,7 @@ export default function Home() {
           <div className="flex gap-2">
             {compareList.length > 0 && (
               <Link href="/compare">
-                <Button variant="outline">
+                <Button variant="outline" className="animate-in fade-in duration-300">
                   <BarChart2 className="mr-2 h-4 w-4" />
                   Compare ({compareList.length})
                 </Button>
