@@ -2,21 +2,40 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { SearchBar } from "@/components/search-bar";
+import { SearchBar, type SearchParams } from "@/components/search-bar";
 import { SuperheroGrid } from "@/components/superhero-grid";
-import { type SearchResponse } from "@shared/schema";
+import { type SearchResponse, type Superhero } from "@shared/schema";
 import { Heart } from "lucide-react";
 
 export default function Home() {
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchParams, setSearchParams] = useState<SearchParams>({
+    term: "",
+    filters: {
+      minIntelligence: 0,
+      minStrength: 0,
+      minSpeed: 0,
+      minPower: 0,
+    },
+  });
 
   const { data, isLoading, error } = useQuery<SearchResponse>({
-    queryKey: ["/api/search", searchTerm],
+    queryKey: ["/api/search", searchParams.term],
     queryFn: () =>
-      fetch(`/api/search?query=${encodeURIComponent(searchTerm)}`).then((res) =>
+      fetch(`/api/search?query=${encodeURIComponent(searchParams.term)}`).then((res) =>
         res.json()
       ),
-    enabled: searchTerm.length > 0,
+    enabled: searchParams.term.length > 0,
+  });
+
+  // Filter heroes based on power stats
+  const filteredHeroes = data?.results?.filter((hero: Superhero) => {
+    const { filters } = searchParams;
+    return (
+      hero.powerstats.intelligence >= (filters.minIntelligence || 0) &&
+      hero.powerstats.strength >= (filters.minStrength || 0) &&
+      hero.powerstats.speed >= (filters.minSpeed || 0) &&
+      hero.powerstats.power >= (filters.minPower || 0)
+    );
   });
 
   return (
@@ -35,11 +54,11 @@ export default function Home() {
         </div>
 
         <div className="max-w-2xl mx-auto mb-12">
-          <SearchBar onSearch={setSearchTerm} isLoading={isLoading} />
+          <SearchBar onSearch={setSearchParams} isLoading={isLoading} />
         </div>
 
         <SuperheroGrid
-          heroes={data?.results || []}
+          heroes={filteredHeroes || []}
           isLoading={isLoading}
           error={error?.message || data?.error}
         />
