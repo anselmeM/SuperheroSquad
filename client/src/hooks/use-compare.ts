@@ -6,8 +6,12 @@ const MAX_COMPARE = 3; // Maximum number of heroes to compare
 
 export function useCompare() {
   const [compareList, setCompareList] = useState<Superhero[]>(() => {
-    const saved = localStorage.getItem(COMPARE_KEY);
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = localStorage.getItem(COMPARE_KEY);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
   });
 
   useEffect(() => {

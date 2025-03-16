@@ -30,23 +30,31 @@ export function SuperheroCard({
         <div className="absolute top-2 right-2 flex gap-2">
           {onToggleCompare && (
             <Button
-              variant={isInCompare ? "default" : "ghost"}
+              variant={isInCompare ? "default" : "outline"}
               size="icon"
-              className={`transition-colors duration-200 ${
-                isInCompare ? 'bg-primary text-primary-foreground' : 'text-gray-500 hover:text-primary'
+              className={`transition-all duration-200 ${
+                isInCompare ? 'bg-primary text-primary-foreground scale-105' : 'bg-background/80 backdrop-blur-sm hover:bg-primary/20'
               }`}
-              onClick={onToggleCompare}
+              onClick={(e) => {
+                e.preventDefault();
+                onToggleCompare();
+              }}
             >
-              <BarChart2 className="h-6 w-6" />
+              <BarChart2 className="h-5 w-5" />
             </Button>
           )}
           <Button
-            variant="ghost"
+            variant="outline"
             size="icon"
-            className={`${isFavorite ? 'text-red-500' : 'text-gray-500'}`}
-            onClick={onToggleFavorite}
+            className={`transition-all duration-200 ${
+              isFavorite ? 'bg-red-500/20 text-red-500' : 'bg-background/80 backdrop-blur-sm hover:bg-red-500/20'
+            }`}
+            onClick={(e) => {
+              e.preventDefault();
+              onToggleFavorite();
+            }}
           >
-            <Heart className={`h-6 w-6 ${isFavorite ? 'fill-current' : ''}`} />
+            <Heart className={`h-5 w-5 ${isFavorite ? 'fill-current' : ''}`} />
           </Button>
         </div>
       </div>
