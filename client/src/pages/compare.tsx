@@ -4,11 +4,12 @@ import { Progress } from "@/components/ui/progress";
 import { useCompare } from "@/hooks/use-compare";
 import { Link } from "wouter";
 import { ArrowLeft, X } from "lucide-react";
+import { type PowerStats } from "@shared/schema";
 
 export default function Compare() {
   const { compareList, removeFromCompare, clearCompare } = useCompare();
 
-  const stats = [
+  const stats: (keyof PowerStats)[] = [
     "intelligence",
     "strength",
     "speed",
