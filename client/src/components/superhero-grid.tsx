@@ -5,6 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { type Superhero } from "@shared/schema";
 import { useFavorites } from "@/hooks/use-favorites";
 import { useCompare } from "@/hooks/use-compare";
+import { useToast } from "@/hooks/use-toast";
 
 interface SuperheroGridProps {
   heroes: Superhero[];
@@ -15,6 +16,23 @@ interface SuperheroGridProps {
 export function SuperheroGrid({ heroes, isLoading, error }: SuperheroGridProps) {
   const { isFavorite, addFavorite, removeFavorite } = useFavorites();
   const { isInCompare, addToCompare, removeFromCompare, canAddMore } = useCompare();
+  const { toast } = useToast();
+
+  const handleCompareToggle = (hero: Superhero) => {
+    if (isInCompare(hero.id)) {
+      removeFromCompare(hero.id);
+    } else {
+      if (!canAddMore) {
+        toast({
+          variant: "destructive",
+          title: "Compare limit reached",
+          description: "You can only compare up to 3 heroes at a time. Remove a hero first.",
+        });
+        return;
+      }
+      addToCompare(hero);
+    }
+  };
 
   if (error) {
     return (
@@ -61,11 +79,7 @@ export function SuperheroGrid({ heroes, isLoading, error }: SuperheroGridProps) 
               : addFavorite(hero)
           }
           isInCompare={isInCompare(hero.id)}
-          onToggleCompare={() =>
-            isInCompare(hero.id)
-              ? removeFromCompare(hero.id)
-              : canAddMore && addToCompare(hero)
-          }
+          onToggleCompare={() => handleCompareToggle(hero)}
         />
       ))}
     </div>
