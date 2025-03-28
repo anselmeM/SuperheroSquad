@@ -62,6 +62,7 @@ function StatBar({ label, value }: { label: string; value: number }) {
           flex 
           items-center 
           gap-1.5 
+          font-lato
           font-medium 
           ${textColor} 
           transition-all 
@@ -208,10 +209,10 @@ export function SuperheroCard({
                 `}
               >
                 <div className="mb-8">
-                  <div className="text-white text-xs font-medium uppercase tracking-wider mb-1 opacity-70">
+                  <div className="text-white text-xs font-major uppercase tracking-wider mb-1 opacity-70">
                     Real Name
                   </div>
-                  <div className="text-white text-sm font-bold">
+                  <div className="text-white text-sm font-lato">
                     {hero.biography["full-name"] || "Unknown"}
                   </div>
                 </div>
@@ -235,7 +236,10 @@ export function SuperheroCard({
                   bg-primary/90 
                   hover:bg-primary 
                   text-white 
-                  font-medium 
+                  font-major
+                  text-xs
+                  tracking-wide
+                  uppercase
                   px-3 
                   py-1.5 
                   flex 
@@ -271,6 +275,7 @@ export function SuperheroCard({
                   left-2 
                   bg-background/80 
                   backdrop-blur-sm 
+                  font-lato
                   font-semibold
                   shadow-sm
                   transition-all
@@ -298,6 +303,7 @@ export function SuperheroCard({
                         : "bg-blue-500/90"
                   } 
                   backdrop-blur-sm 
+                  font-lato
                   transition-all 
                   duration-300 
                   flex 
@@ -387,7 +393,8 @@ export function SuperheroCard({
           <CardHeader className="pb-2 pt-3">
             <h3 className={`
               text-xl 
-              font-bold 
+              font-bangers
+              tracking-wide
               transition-colors 
               duration-300
               ${isHovered ? 'text-primary' : ''}
@@ -401,7 +408,8 @@ export function SuperheroCard({
                   variant="outline" 
                   className={`
                     text-xs 
-                    font-medium 
+                    font-major
+                    tracking-wide
                     ${getPowerScoreColor()}
                     transition-all
                     duration-300
