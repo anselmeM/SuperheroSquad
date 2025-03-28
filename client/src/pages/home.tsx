@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SearchBar, type SearchParams } from "@/components/search-bar";
 import { SuperheroGrid } from "@/components/superhero-grid";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { type SearchResponse, type Superhero } from "@shared/schema";
 import { Heart, BarChart2 } from "lucide-react";
 import { useCompare } from "@/hooks/use-compare";
@@ -101,6 +102,7 @@ export default function Home() {
                 Favorites
               </Button>
             </Link>
+            <ThemeToggle />
           </div>
         </div>
 

@@ -2,6 +2,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import { SuperheroCard } from "@/components/superhero-card";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { useFavorites } from "@/hooks/use-favorites";
 import { useCompare } from "@/hooks/use-compare";
 import { useToast } from "@/hooks/use-toast";
@@ -26,15 +27,18 @@ export default function Favorites() {
               Favorite Heroes
             </h1>
           </div>
-          <Link href="/compare">
-            <Button 
-              variant={compareList.length > 0 ? "default" : "outline"}
-              className={`animate-in fade-in duration-300 ${compareList.length === 0 ? 'opacity-50' : ''}`}
-            >
-              <BarChart2 className="mr-2 h-4 w-4" />
-              Compare {compareList.length > 0 ? `(${compareList.length})` : ''}
-            </Button>
-          </Link>
+          <div className="flex gap-2">
+            <Link href="/compare">
+              <Button 
+                variant={compareList.length > 0 ? "default" : "outline"}
+                className={`animate-in fade-in duration-300 ${compareList.length === 0 ? 'opacity-50' : ''}`}
+              >
+                <BarChart2 className="mr-2 h-4 w-4" />
+                Compare {compareList.length > 0 ? `(${compareList.length})` : ''}
+              </Button>
+            </Link>
+            <ThemeToggle />
+          </div>
         </div>
 
         {favorites.length === 0 ? (

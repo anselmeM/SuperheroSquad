@@ -5,6 +5,7 @@ import { useCompare } from "@/hooks/use-compare";
 import { Link } from "wouter";
 import { ArrowLeft, X } from "lucide-react";
 import { type PowerStats, type Superhero } from "@shared/schema";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { 
   Radar, 
   RadarChart, 
@@ -55,6 +56,7 @@ export default function Compare() {
                 Clear All
               </Button>
             )}
+            <ThemeToggle />
           </div>
         </div>
 
