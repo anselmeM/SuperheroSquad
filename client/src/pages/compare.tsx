@@ -4,7 +4,18 @@ import { Progress } from "@/components/ui/progress";
 import { useCompare } from "@/hooks/use-compare";
 import { Link } from "wouter";
 import { ArrowLeft, X } from "lucide-react";
-import { type PowerStats } from "@shared/schema";
+import { type PowerStats, type Superhero } from "@shared/schema";
+import { 
+  Radar, 
+  RadarChart, 
+  PolarGrid, 
+  PolarAngleAxis, 
+  PolarRadiusAxis, 
+  ResponsiveContainer,
+  Legend,
+  Tooltip
+} from "recharts";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function Compare() {
   const { compareList, removeFromCompare, clearCompare } = useCompare();
@@ -83,27 +94,94 @@ export default function Compare() {
               ))}
             </div>
 
+            {/* Tabbed Comparison View */}
             <Card>
               <CardContent className="pt-6">
-                {stats.map((stat) => (
-                  <div key={stat} className="mb-6">
-                    <h4 className="capitalize text-lg font-medium mb-4">{stat}</h4>
-                    <div className="space-y-4">
-                      {compareList.map((hero) => (
-                        <div key={`${hero.id}-${stat}`}>
-                          <div className="flex justify-between text-sm mb-2">
-                            <span>{hero.name}</span>
-                            <span>{hero.powerstats[stat]}%</span>
+                <h4 className="text-xl font-medium mb-6">Power Stats Comparison</h4>
+                
+                <Tabs defaultValue="radar" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2 mb-6">
+                    <TabsTrigger value="radar">Radar Chart</TabsTrigger>
+                    <TabsTrigger value="bars">Bar Comparison</TabsTrigger>
+                  </TabsList>
+                  
+                  {/* Radar Chart Tab */}
+                  <TabsContent value="radar" className="w-full">
+                    <div className="w-full h-[500px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <RadarChart
+                          cx="50%"
+                          cy="50%"
+                          outerRadius="80%"
+                          data={stats.map(stat => {
+                            const statData: Record<string, any> = { stat: stat.charAt(0).toUpperCase() + stat.slice(1) };
+                            compareList.forEach(hero => {
+                              // Convert string value to number
+                              statData[hero.name] = Number(hero.powerstats[stat]);
+                            });
+                            return statData;
+                          })}
+                        >
+                          <PolarGrid />
+                          <PolarAngleAxis dataKey="stat" />
+                          <PolarRadiusAxis angle={30} domain={[0, 100]} />
+                          
+                          {compareList.map((hero, index) => {
+                            // Generate a color based on the index
+                            const colors = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#a4de6c', '#d0ed57'];
+                            const color = colors[index % colors.length];
+                            
+                            return (
+                              <Radar
+                                key={hero.id}
+                                name={hero.name}
+                                dataKey={hero.name}
+                                stroke={color}
+                                fill={color}
+                                fillOpacity={0.2}
+                              />
+                            );
+                          })}
+                          <Tooltip />
+                          <Legend />
+                        </RadarChart>
+                      </ResponsiveContainer>
+                    </div>
+                    
+                    <div className="mt-6 text-sm text-muted-foreground">
+                      <p>The radar chart shows all stats for each hero, making it easy to visualize their overall profile and strengths at a glance.</p>
+                    </div>
+                  </TabsContent>
+                  
+                  {/* Bar Comparison Tab */}
+                  <TabsContent value="bars">
+                    <div className="space-y-8">
+                      {stats.map((stat) => (
+                        <div key={stat} className="mb-6">
+                          <h4 className="capitalize text-lg font-medium mb-4">{stat}</h4>
+                          <div className="space-y-4">
+                            {compareList.map((hero) => (
+                              <div key={`${hero.id}-${stat}`}>
+                                <div className="flex justify-between text-sm mb-2">
+                                  <span>{hero.name}</span>
+                                  <span>{hero.powerstats[stat]}%</span>
+                                </div>
+                                <Progress
+                                  value={Number(hero.powerstats[stat])}
+                                  className="h-2"
+                                />
+                              </div>
+                            ))}
                           </div>
-                          <Progress
-                            value={hero.powerstats[stat]}
-                            className="h-2"
-                          />
                         </div>
                       ))}
                     </div>
-                  </div>
-                ))}
+                    
+                    <div className="mt-6 text-sm text-muted-foreground">
+                      <p>The bar view provides a direct side-by-side comparison of each individual stat.</p>
+                    </div>
+                  </TabsContent>
+                </Tabs>
               </CardContent>
             </Card>
           </div>
