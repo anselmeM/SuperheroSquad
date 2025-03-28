@@ -247,25 +247,25 @@ export function SearchBar({ onSearch, isLoading, initialSearchParams }: SearchBa
                 )}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-80 p-0 border-2 max-h-[90vh] md:max-h-[600px]">
-              <div className="p-4 border-b bg-muted/50 sticky top-0 z-10">
-                <h3 className="font-semibold text-lg flex items-center">
+            <DropdownMenuContent className="w-80 p-0 border-2 max-h-[80vh] md:max-h-[500px]">
+              <div className="p-3 border-b bg-muted/50 sticky top-0 z-10">
+                <h3 className="font-semibold flex items-center">
                   <SlidersHorizontal className="h-4 w-4 mr-2" />
                   Filter Heroes
                 </h3>
               </div>
-              <div className="p-5 space-y-6 overflow-y-auto max-h-[calc(90vh-60px)] md:max-h-[540px]">
+              <div className="p-3 space-y-4 overflow-y-auto max-h-[calc(80vh-48px)] md:max-h-[452px]">
                 <div>
-                  <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Publisher & Alignment</h3>
-                  <div className="grid grid-cols-1 gap-4">
-                    <div className="space-y-2">
-                      <label htmlFor="publisher" className="text-sm font-medium flex items-center">
-                        <Shield className="h-4 w-4 mr-2 text-muted-foreground" />
+                  <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Publisher & Alignment</h3>
+                  <div className="grid grid-cols-1 gap-2">
+                    <div className="space-y-1">
+                      <label htmlFor="publisher" className="text-xs font-medium flex items-center">
+                        <Shield className="h-3 w-3 mr-1 text-muted-foreground" />
                         Publisher
                       </label>
                       <select 
                         id="publisher"
-                        className="w-full p-2 text-sm rounded-md border border-input focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary bg-transparent"
+                        className="w-full p-1.5 text-xs rounded-md border border-input focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary bg-transparent"
                         value={filters.publisher}
                         onChange={(e) => setFilters(prev => ({ ...prev, publisher: e.target.value }))}
                       >
@@ -278,14 +278,14 @@ export function SearchBar({ onSearch, isLoading, initialSearchParams }: SearchBa
                         <option value="Shueisha">Shueisha</option>
                       </select>
                     </div>
-                    <div className="space-y-2">
-                      <label htmlFor="alignment" className="text-sm font-medium flex items-center">
-                        <Zap className="h-4 w-4 mr-2 text-muted-foreground" />
+                    <div className="space-y-1">
+                      <label htmlFor="alignment" className="text-xs font-medium flex items-center">
+                        <Zap className="h-3 w-3 mr-1 text-muted-foreground" />
                         Alignment
                       </label>
                       <select 
                         id="alignment"
-                        className="w-full p-2 text-sm rounded-md border border-input focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary bg-transparent"
+                        className="w-full p-1.5 text-xs rounded-md border border-input focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary bg-transparent"
                         value={filters.alignment}
                         onChange={(e) => setFilters(prev => ({ ...prev, alignment: e.target.value }))}
                       >
@@ -295,14 +295,14 @@ export function SearchBar({ onSearch, isLoading, initialSearchParams }: SearchBa
                         <option value="neutral">Neutral</option>
                       </select>
                     </div>
-                    <div className="space-y-2">
-                      <label htmlFor="gender" className="text-sm font-medium flex items-center">
-                        <User className="h-4 w-4 mr-2 text-muted-foreground" />
+                    <div className="space-y-1">
+                      <label htmlFor="gender" className="text-xs font-medium flex items-center">
+                        <User className="h-3 w-3 mr-1 text-muted-foreground" />
                         Gender
                       </label>
                       <select 
                         id="gender"
-                        className="w-full p-2 text-sm rounded-md border border-input focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary bg-transparent"
+                        className="w-full p-1.5 text-xs rounded-md border border-input focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary bg-transparent"
                         value={filters.gender}
                         onChange={(e) => setFilters(prev => ({ ...prev, gender: e.target.value }))}
                       >
@@ -317,81 +317,81 @@ export function SearchBar({ onSearch, isLoading, initialSearchParams }: SearchBa
                 <DropdownMenuSeparator />
                 
                 <div>
-                  <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                  <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Minimum Power Stats
                   </h3>
-                  <div className="space-y-4">
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-sm">
+                  <div className="space-y-2">
+                    <div className="space-y-0.5">
+                      <div className="flex justify-between text-xs">
                         <label className="flex items-center font-medium">
-                          <Brain className="h-4 w-4 mr-2 text-blue-500" />
+                          <Brain className="h-3 w-3 mr-1 text-blue-500" />
                           Intelligence
                         </label>
-                        <span className="font-mono bg-primary/10 px-2 rounded text-xs">{filters.minIntelligence}</span>
+                        <span className="font-mono bg-primary/10 px-1.5 rounded text-xs">{filters.minIntelligence}</span>
                       </div>
                       <Slider
                         value={[filters.minIntelligence]}
                         min={0}
                         max={100}
                         step={5}
-                        className="py-2"
+                        className="py-1"
                         onValueChange={([value]) =>
                           setFilters((prev) => ({ ...prev, minIntelligence: value }))
                         }
                       />
                     </div>
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-sm">
+                    <div className="space-y-0.5">
+                      <div className="flex justify-between text-xs">
                         <label className="flex items-center font-medium">
-                          <Dumbbell className="h-4 w-4 mr-2 text-red-500" />
+                          <Dumbbell className="h-3 w-3 mr-1 text-red-500" />
                           Strength
                         </label>
-                        <span className="font-mono bg-primary/10 px-2 rounded text-xs">{filters.minStrength}</span>
+                        <span className="font-mono bg-primary/10 px-1.5 rounded text-xs">{filters.minStrength}</span>
                       </div>
                       <Slider
                         value={[filters.minStrength]}
                         min={0}
                         max={100}
                         step={5}
-                        className="py-2"
+                        className="py-1"
                         onValueChange={([value]) =>
                           setFilters((prev) => ({ ...prev, minStrength: value }))
                         }
                       />
                     </div>
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-sm">
+                    <div className="space-y-0.5">
+                      <div className="flex justify-between text-xs">
                         <label className="flex items-center font-medium">
-                          <Wind className="h-4 w-4 mr-2 text-green-500" />
+                          <Wind className="h-3 w-3 mr-1 text-green-500" />
                           Speed
                         </label>
-                        <span className="font-mono bg-primary/10 px-2 rounded text-xs">{filters.minSpeed}</span>
+                        <span className="font-mono bg-primary/10 px-1.5 rounded text-xs">{filters.minSpeed}</span>
                       </div>
                       <Slider
                         value={[filters.minSpeed]}
                         min={0}
                         max={100}
                         step={5}
-                        className="py-2"
+                        className="py-1"
                         onValueChange={([value]) =>
                           setFilters((prev) => ({ ...prev, minSpeed: value }))
                         }
                       />
                     </div>
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-sm">
+                    <div className="space-y-0.5">
+                      <div className="flex justify-between text-xs">
                         <label className="flex items-center font-medium">
-                          <Activity className="h-4 w-4 mr-2 text-purple-500" />
+                          <Activity className="h-3 w-3 mr-1 text-purple-500" />
                           Power
                         </label>
-                        <span className="font-mono bg-primary/10 px-2 rounded text-xs">{filters.minPower}</span>
+                        <span className="font-mono bg-primary/10 px-1.5 rounded text-xs">{filters.minPower}</span>
                       </div>
                       <Slider
                         value={[filters.minPower]}
                         min={0}
                         max={100}
                         step={5}
-                        className="py-2"
+                        className="py-1"
                         onValueChange={([value]) =>
                           setFilters((prev) => ({ ...prev, minPower: value }))
                         }
@@ -400,7 +400,7 @@ export function SearchBar({ onSearch, isLoading, initialSearchParams }: SearchBa
                   </div>
                 </div>
                 
-                <div className="pt-2 flex justify-between">
+                <div className="pt-1 flex justify-between">
                   <Button 
                     variant="ghost" 
                     size="sm"
@@ -413,15 +413,15 @@ export function SearchBar({ onSearch, isLoading, initialSearchParams }: SearchBa
                       alignment: "",
                       gender: "",
                     })}
-                    className="text-muted-foreground hover:text-foreground"
+                    className="text-muted-foreground hover:text-foreground h-8 text-xs"
                   >
-                    <X className="h-4 w-4 mr-2" />
-                    Reset All
+                    <X className="h-3 w-3 mr-1" />
+                    Reset
                   </Button>
                   <Button 
                     size="sm"
                     onClick={() => handleSearch()}
-                    className="font-medium"
+                    className="font-medium h-8 text-xs"
                   >
                     Apply Filters
                   </Button>
