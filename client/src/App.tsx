@@ -6,6 +6,7 @@ import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
 import Favorites from "@/pages/favorites";
 import Compare from "@/pages/compare";
+import HeroDetail from "@/pages/hero-detail";
 
 function Router() {
   return (
@@ -13,6 +14,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/favorites" component={Favorites} />
       <Route path="/compare" component={Compare} />
+      <Route path="/hero/:id" component={HeroDetail} />
       <Route component={NotFound} />
     </Switch>
   );

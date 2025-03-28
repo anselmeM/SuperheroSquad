@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { searchResponseSchema } from "@shared/schema";
+import { searchResponseSchema, superheroSchema } from "@shared/schema";
 import { ZodError } from "zod";
 
 const API_TOKEN = process.env.SUPERHERO_API_TOKEN || "e2f8ee39a6603445c2dd55dd9d8ab2d4";
