@@ -42,19 +42,18 @@ export default function Home() {
     );
   });
 
-  // Force re-render when compareList changes
+  // Compare button to be displayed next to Favorites
   const CompareButton = () => {
     console.log('Rendering CompareButton - compareList length:', compareList.length);
-    if (compareList.length === 0) return null;
-
+    
     return (
       <Link href="/compare">
         <Button 
-          variant="outline" 
-          className="animate-in fade-in duration-300"
+          variant={compareList.length > 0 ? "default" : "outline"}
+          className={`animate-in fade-in duration-300 ${compareList.length === 0 ? 'opacity-50' : ''}`}
         >
           <BarChart2 className="mr-2 h-4 w-4" />
-          Compare ({compareList.length})
+          Compare {compareList.length > 0 ? `(${compareList.length})` : ''}
         </Button>
       </Link>
     );
@@ -88,19 +87,6 @@ export default function Home() {
           error={error?.message || data?.error}
         />
       </main>
-
-      {/* Floating Compare Button */}
-      {compareList.length > 0 && (
-        <Link href="/compare">
-          <Button 
-            className="fixed bottom-6 right-6 rounded-full shadow-lg animate-in fade-in zoom-in duration-300 z-50"
-            size="lg"
-          >
-            <BarChart2 className="mr-2 h-5 w-5" />
-            Compare Heroes ({compareList.length})
-          </Button>
-        </Link>
-      )}
     </div>
   );
 }

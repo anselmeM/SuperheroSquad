@@ -15,15 +15,26 @@ export default function Favorites() {
   return (
     <div className="min-h-screen bg-background relative">
       <main className="container mx-auto px-4 py-8">
-        <div className="flex items-center gap-4 mb-8">
-          <Link href="/">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-6 w-6" />
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-4">
+            <Link href="/">
+              <Button variant="ghost" size="icon">
+                <ArrowLeft className="h-6 w-6" />
+              </Button>
+            </Link>
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-primary/80 to-primary bg-clip-text text-transparent">
+              Favorite Heroes
+            </h1>
+          </div>
+          <Link href="/compare">
+            <Button 
+              variant={compareList.length > 0 ? "default" : "outline"}
+              className={`animate-in fade-in duration-300 ${compareList.length === 0 ? 'opacity-50' : ''}`}
+            >
+              <BarChart2 className="mr-2 h-4 w-4" />
+              Compare {compareList.length > 0 ? `(${compareList.length})` : ''}
             </Button>
           </Link>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary/80 to-primary bg-clip-text text-transparent">
-            Favorite Heroes
-          </h1>
         </div>
 
         {favorites.length === 0 ? (
@@ -85,19 +96,6 @@ export default function Favorites() {
           </div>
         )}
       </main>
-      
-      {/* Floating Compare Button */}
-      {compareList.length > 0 && (
-        <Link href="/compare">
-          <Button 
-            className="fixed bottom-6 right-6 rounded-full shadow-lg animate-in fade-in zoom-in duration-300 z-50"
-            size="lg"
-          >
-            <BarChart2 className="mr-2 h-5 w-5" />
-            Compare Heroes ({compareList.length})
-          </Button>
-        </Link>
-      )}
     </div>
   );
 }
