@@ -113,9 +113,11 @@ export default function Home() {
         {/* Show active filters */}
         {searchParams && (
           <div className="mb-6">
-            <h2 className="text-lg font-semibold mb-2">
-              {filteredHeroes?.length || 0} Heroes Found
-            </h2>
+            {filteredHeroes && filteredHeroes.length > 0 && (
+              <h2 className="text-lg font-semibold mb-2">
+                {filteredHeroes.length} Heroes Found
+              </h2>
+            )}
             <div className="flex flex-wrap gap-2">
               {searchParams.filters.publisher && (
                 <Badge variant="outline" className="px-3 py-1 bg-primary/10">

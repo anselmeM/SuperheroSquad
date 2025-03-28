@@ -110,7 +110,21 @@ export function SuperheroGrid({ heroes, isLoading, error, searchParams }: Superh
   }
 
   if (heroes.length === 0) {
-    return null;
+    return (
+      <div className="text-center py-12">
+        <div className="mb-4 opacity-50">
+          <img 
+            src="https://www.superherodb.com/pictures2/portraits/10/100/1496.jpg" 
+            alt="Search for heroes" 
+            className="w-32 h-32 object-cover mx-auto rounded-full shadow-lg mb-4"
+          />
+        </div>
+        <h3 className="text-xl font-bold mb-2">No heroes found</h3>
+        <p className="text-muted-foreground">
+          Try changing your search term or adjusting the filters
+        </p>
+      </div>
+    );
   }
 
   return (
