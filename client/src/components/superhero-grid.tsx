@@ -83,7 +83,8 @@ export function SuperheroGrid({ heroes, isLoading, error }: SuperheroGridProps) 
 
         return (
           <SuperheroCard 
-            key={hero.id} 
+            // Use a key that includes the compare state to force re-render when it changes
+            key={`${hero.id}-${isCompared ? 'compared' : 'not-compared'}`} 
             hero={hero}
             isFavorite={isFavorite(hero.id)}
             onToggleFavorite={() => 
