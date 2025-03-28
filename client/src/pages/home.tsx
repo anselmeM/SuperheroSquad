@@ -91,7 +91,7 @@ export default function Home() {
     <div className="min-h-screen bg-background relative">
       <main className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-8">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary/80 to-primary bg-clip-text text-transparent">
+          <h1 className="text-5xl font-bangers bg-gradient-to-r from-primary/80 to-primary bg-clip-text text-transparent tracking-wider">
             Superhero Search
           </h1>
           <div className="flex gap-2">
@@ -114,7 +114,7 @@ export default function Home() {
         {searchParams && filteredHeroes && filteredHeroes.length > 0 && (
           <div className="mb-8">
             <div className="flex justify-between items-center border-b pb-3 mb-4">
-              <h2 className="text-xl font-bold">
+              <h2 className="text-xl font-montserrat font-semibold">
                 {filteredHeroes.length} Heroes Found
               </h2>
               
@@ -158,42 +158,51 @@ export default function Home() {
               (searchParams.filters.minSpeed && searchParams.filters.minSpeed > 0) ||
               (searchParams.filters.minPower && searchParams.filters.minPower > 0)) && (
               <div className="flex flex-wrap gap-2 mb-4">
-                <span className="text-sm text-muted-foreground py-1">Filters:</span>
-                {searchParams.filters.publisher && (
-                  <Badge variant="outline" className="px-3 py-1 bg-primary/10 animate-in fade-in duration-300">
-                    Publisher: {searchParams.filters.publisher}
-                  </Badge>
-                )}
-                {searchParams.filters.alignment && (
-                  <Badge variant="outline" className="px-3 py-1 bg-primary/10 animate-in fade-in duration-300">
-                    Alignment: {searchParams.filters.alignment}
-                  </Badge>
-                )}
-                {searchParams.filters.gender && (
-                  <Badge variant="outline" className="px-3 py-1 bg-primary/10 animate-in fade-in duration-300">
-                    Gender: {searchParams.filters.gender}
-                  </Badge>
-                )}
-                {searchParams.filters.minIntelligence && searchParams.filters.minIntelligence > 0 && (
-                  <Badge variant="outline" className="px-3 py-1 bg-primary/10 animate-in fade-in duration-300">
-                    Intelligence: {searchParams.filters.minIntelligence}+
-                  </Badge>
-                )}
-                {searchParams.filters.minStrength && searchParams.filters.minStrength > 0 && (
-                  <Badge variant="outline" className="px-3 py-1 bg-primary/10 animate-in fade-in duration-300">
-                    Strength: {searchParams.filters.minStrength}+
-                  </Badge>
-                )}
-                {searchParams.filters.minSpeed && searchParams.filters.minSpeed > 0 && (
-                  <Badge variant="outline" className="px-3 py-1 bg-primary/10 animate-in fade-in duration-300">
-                    Speed: {searchParams.filters.minSpeed}+
-                  </Badge>
-                )}
-                {searchParams.filters.minPower && searchParams.filters.minPower > 0 && (
-                  <Badge variant="outline" className="px-3 py-1 bg-primary/10 animate-in fade-in duration-300">
-                    Power: {searchParams.filters.minPower}+
-                  </Badge>
-                )}
+                <span className="text-sm font-lato text-muted-foreground py-1">Filters:</span>
+                {/* Common badge style for all filter badges */}
+                {(() => {
+                  const badgeClass = "px-3 py-1 bg-primary/10 font-major text-xs uppercase tracking-wide animate-in fade-in duration-300";
+                  
+                  return (
+                    <>
+                      {searchParams.filters.publisher && (
+                        <Badge variant="outline" className={badgeClass}>
+                          Publisher: {searchParams.filters.publisher}
+                        </Badge>
+                      )}
+                      {searchParams.filters.alignment && (
+                        <Badge variant="outline" className={badgeClass}>
+                          Alignment: {searchParams.filters.alignment}
+                        </Badge>
+                      )}
+                      {searchParams.filters.gender && (
+                        <Badge variant="outline" className={badgeClass}>
+                          Gender: {searchParams.filters.gender}
+                        </Badge>
+                      )}
+                      {searchParams.filters.minIntelligence && searchParams.filters.minIntelligence > 0 && (
+                        <Badge variant="outline" className={badgeClass}>
+                          Intel: {searchParams.filters.minIntelligence}+
+                        </Badge>
+                      )}
+                      {searchParams.filters.minStrength && searchParams.filters.minStrength > 0 && (
+                        <Badge variant="outline" className={badgeClass}>
+                          Str: {searchParams.filters.minStrength}+
+                        </Badge>
+                      )}
+                      {searchParams.filters.minSpeed && searchParams.filters.minSpeed > 0 && (
+                        <Badge variant="outline" className={badgeClass}>
+                          Spd: {searchParams.filters.minSpeed}+
+                        </Badge>
+                      )}
+                      {searchParams.filters.minPower && searchParams.filters.minPower > 0 && (
+                        <Badge variant="outline" className={badgeClass}>
+                          Pwr: {searchParams.filters.minPower}+
+                        </Badge>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             )}
           </div>
