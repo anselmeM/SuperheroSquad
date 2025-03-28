@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { SearchBar, type SearchParams } from "@/components/search-bar";
 import { SuperheroGrid } from "@/components/superhero-grid";
 import { type SearchResponse, type Superhero } from "@shared/schema";
@@ -16,6 +17,9 @@ export default function Home() {
       minStrength: 0,
       minSpeed: 0,
       minPower: 0,
+      publisher: "",
+      alignment: "",
+      gender: "",
     },
   });
 
@@ -31,14 +35,37 @@ export default function Home() {
     enabled: searchParams.term.length > 0,
   });
 
-  // Filter heroes based on power stats
+  // Filter heroes based on all filters
   const filteredHeroes = data?.results?.filter((hero: Superhero) => {
     const { filters } = searchParams;
-    return (
+    
+    // Check power stats filters
+    const meetsStatRequirements = 
       hero.powerstats.intelligence >= (filters.minIntelligence || 0) &&
       hero.powerstats.strength >= (filters.minStrength || 0) &&
       hero.powerstats.speed >= (filters.minSpeed || 0) &&
-      hero.powerstats.power >= (filters.minPower || 0)
+      hero.powerstats.power >= (filters.minPower || 0);
+    
+    // Check publisher filter
+    const meetsPublisherRequirement = 
+      !filters.publisher || 
+      (hero.biography && hero.biography.publisher.toLowerCase().includes(filters.publisher.toLowerCase()));
+    
+    // Check alignment filter
+    const meetsAlignmentRequirement = 
+      !filters.alignment || 
+      (hero.biography && hero.biography.alignment.toLowerCase() === filters.alignment.toLowerCase());
+    
+    // Check gender filter
+    const meetsGenderRequirement = 
+      !filters.gender || 
+      (hero.appearance && hero.appearance.gender.toLowerCase() === filters.gender.toLowerCase());
+    
+    return (
+      meetsStatRequirements && 
+      meetsPublisherRequirement && 
+      meetsAlignmentRequirement && 
+      meetsGenderRequirement
     );
   });
 
@@ -81,10 +108,88 @@ export default function Home() {
           <SearchBar onSearch={setSearchParams} isLoading={isLoading} />
         </div>
 
+        {/* Show active filters */}
+        {searchParams && (
+          <div className="mb-6">
+            <h2 className="text-lg font-semibold mb-2">
+              {filteredHeroes?.length || 0} Heroes Found
+            </h2>
+            <div className="flex flex-wrap gap-2">
+              {searchParams.filters.publisher && (
+                <Badge variant="outline" className="px-3 py-1 bg-primary/10">
+                  Publisher: {searchParams.filters.publisher}
+                </Badge>
+              )}
+              {searchParams.filters.alignment && (
+                <Badge variant="outline" className="px-3 py-1 bg-primary/10">
+                  Alignment: {searchParams.filters.alignment}
+                </Badge>
+              )}
+              {searchParams.filters.gender && (
+                <Badge variant="outline" className="px-3 py-1 bg-primary/10">
+                  Gender: {searchParams.filters.gender}
+                </Badge>
+              )}
+              {searchParams.filters.minIntelligence && searchParams.filters.minIntelligence > 0 && (
+                <Badge variant="outline" className="px-3 py-1 bg-primary/10">
+                  Intelligence: {searchParams.filters.minIntelligence}+
+                </Badge>
+              )}
+              {searchParams.filters.minStrength && searchParams.filters.minStrength > 0 && (
+                <Badge variant="outline" className="px-3 py-1 bg-primary/10">
+                  Strength: {searchParams.filters.minStrength}+
+                </Badge>
+              )}
+              {searchParams.filters.minSpeed && searchParams.filters.minSpeed > 0 && (
+                <Badge variant="outline" className="px-3 py-1 bg-primary/10">
+                  Speed: {searchParams.filters.minSpeed}+
+                </Badge>
+              )}
+              {searchParams.filters.minPower && searchParams.filters.minPower > 0 && (
+                <Badge variant="outline" className="px-3 py-1 bg-primary/10">
+                  Power: {searchParams.filters.minPower}+
+                </Badge>
+              )}
+              
+              {/* Reset filters button - only show if at least one filter is active */}
+              {(searchParams.filters.publisher || 
+                searchParams.filters.alignment || 
+                searchParams.filters.gender || 
+                (searchParams.filters.minIntelligence && searchParams.filters.minIntelligence > 0) ||
+                (searchParams.filters.minStrength && searchParams.filters.minStrength > 0) ||
+                (searchParams.filters.minSpeed && searchParams.filters.minSpeed > 0) ||
+                (searchParams.filters.minPower && searchParams.filters.minPower > 0)) && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    setSearchParams(prev => ({
+                      ...prev,
+                      filters: {
+                        minIntelligence: 0,
+                        minStrength: 0,
+                        minSpeed: 0,
+                        minPower: 0,
+                        publisher: "",
+                        alignment: "",
+                        gender: "",
+                      }
+                    }));
+                  }}
+                  className="ml-2"
+                >
+                  Clear Filters
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+
         <SuperheroGrid
           heroes={filteredHeroes || []}
           isLoading={isLoading}
           error={error?.message || data?.error}
+          searchParams={searchParams}
         />
       </main>
     </div>

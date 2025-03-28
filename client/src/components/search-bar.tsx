@@ -35,6 +35,9 @@ export interface SearchParams {
     minStrength?: number;
     minSpeed?: number;
     minPower?: number;
+    publisher?: string;
+    alignment?: string;
+    gender?: string;
   };
 }
 
@@ -50,6 +53,9 @@ export function SearchBar({ onSearch, isLoading }: SearchBarProps) {
     minStrength: 0,
     minSpeed: 0,
     minPower: 0,
+    publisher: "",
+    alignment: "",
+    gender: "",
   });
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState<boolean>(false);
@@ -201,65 +207,147 @@ export function SearchBar({ onSearch, isLoading }: SearchBarProps) {
               <SlidersHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-64">
-            <DropdownMenuLabel>Power Stats Filters</DropdownMenuLabel>
+          <DropdownMenuContent className="w-72">
+            <DropdownMenuLabel>Filters</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <div className="p-4 space-y-6">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">
-                  Min Intelligence: {filters.minIntelligence}
-                </label>
-                <Slider
-                  value={[filters.minIntelligence]}
-                  min={0}
-                  max={100}
-                  step={1}
-                  onValueChange={([value]) =>
-                    setFilters((prev) => ({ ...prev, minIntelligence: value }))
-                  }
-                />
+              <div>
+                <h3 className="mb-3 text-sm font-semibold">Categories</h3>
+                <div className="grid grid-cols-1 gap-3 mb-4">
+                  <div className="space-y-1">
+                    <label htmlFor="publisher" className="text-sm font-medium">Publisher</label>
+                    <select 
+                      id="publisher"
+                      className="w-full p-2 text-sm rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={filters.publisher}
+                      onChange={(e) => setFilters(prev => ({ ...prev, publisher: e.target.value }))}
+                    >
+                      <option value="">All Publishers</option>
+                      <option value="Marvel Comics">Marvel Comics</option>
+                      <option value="DC Comics">DC Comics</option>
+                      <option value="Dark Horse Comics">Dark Horse Comics</option>
+                      <option value="Image Comics">Image Comics</option>
+                      <option value="Warner Bros">Warner Bros</option>
+                      <option value="Shueisha">Shueisha</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label htmlFor="alignment" className="text-sm font-medium">Alignment</label>
+                    <select 
+                      id="alignment"
+                      className="w-full p-2 text-sm rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={filters.alignment}
+                      onChange={(e) => setFilters(prev => ({ ...prev, alignment: e.target.value }))}
+                    >
+                      <option value="">All Alignments</option>
+                      <option value="good">Good</option>
+                      <option value="bad">Evil</option>
+                      <option value="neutral">Neutral</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label htmlFor="gender" className="text-sm font-medium">Gender</label>
+                    <select 
+                      id="gender"
+                      className="w-full p-2 text-sm rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={filters.gender}
+                      onChange={(e) => setFilters(prev => ({ ...prev, gender: e.target.value }))}
+                    >
+                      <option value="">All Genders</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                    </select>
+                  </div>
+                </div>
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">
-                  Min Strength: {filters.minStrength}
-                </label>
-                <Slider
-                  value={[filters.minStrength]}
-                  min={0}
-                  max={100}
-                  step={1}
-                  onValueChange={([value]) =>
-                    setFilters((prev) => ({ ...prev, minStrength: value }))
-                  }
-                />
+              
+              <DropdownMenuSeparator />
+              
+              <div>
+                <h3 className="mb-3 text-sm font-semibold">Power Stats</h3>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">
+                      Min Intelligence: {filters.minIntelligence}
+                    </label>
+                    <Slider
+                      value={[filters.minIntelligence]}
+                      min={0}
+                      max={100}
+                      step={1}
+                      onValueChange={([value]) =>
+                        setFilters((prev) => ({ ...prev, minIntelligence: value }))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">
+                      Min Strength: {filters.minStrength}
+                    </label>
+                    <Slider
+                      value={[filters.minStrength]}
+                      min={0}
+                      max={100}
+                      step={1}
+                      onValueChange={([value]) =>
+                        setFilters((prev) => ({ ...prev, minStrength: value }))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">
+                      Min Speed: {filters.minSpeed}
+                    </label>
+                    <Slider
+                      value={[filters.minSpeed]}
+                      min={0}
+                      max={100}
+                      step={1}
+                      onValueChange={([value]) =>
+                        setFilters((prev) => ({ ...prev, minSpeed: value }))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">
+                      Min Power: {filters.minPower}
+                    </label>
+                    <Slider
+                      value={[filters.minPower]}
+                      min={0}
+                      max={100}
+                      step={1}
+                      onValueChange={([value]) =>
+                        setFilters((prev) => ({ ...prev, minPower: value }))
+                      }
+                    />
+                  </div>
+                </div>
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">
-                  Min Speed: {filters.minSpeed}
-                </label>
-                <Slider
-                  value={[filters.minSpeed]}
-                  min={0}
-                  max={100}
-                  step={1}
-                  onValueChange={([value]) =>
-                    setFilters((prev) => ({ ...prev, minSpeed: value }))
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">
-                  Min Power: {filters.minPower}
-                </label>
-                <Slider
-                  value={[filters.minPower]}
-                  min={0}
-                  max={100}
-                  step={1}
-                  onValueChange={([value]) =>
-                    setFilters((prev) => ({ ...prev, minPower: value }))
-                  }
-                />
+              
+              <div className="pt-2 flex justify-end">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setFilters({
+                    minIntelligence: 0,
+                    minStrength: 0,
+                    minSpeed: 0,
+                    minPower: 0,
+                    publisher: "",
+                    alignment: "",
+                    gender: "",
+                  })}
+                  className="mr-2"
+                >
+                  Reset
+                </Button>
+                <Button 
+                  size="sm"
+                  onClick={() => handleSearch()}
+                >
+                  Apply Filters
+                </Button>
               </div>
             </div>
           </DropdownMenuContent>

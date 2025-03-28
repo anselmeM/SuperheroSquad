@@ -1,20 +1,24 @@
 import { useState, useEffect } from "react";
 import { SuperheroCard } from "@/components/superhero-card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, X, SlidersHorizontal } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { type Superhero } from "@shared/schema";
 import { useFavorites } from "@/hooks/use-favorites";
 import { useCompare } from "@/hooks/use-compare";
 import { useToast } from "@/hooks/use-toast";
+import { SearchParams } from "./search-bar";
 
 interface SuperheroGridProps {
   heroes: Superhero[];
   isLoading: boolean;
   error?: string;
+  searchParams?: SearchParams;
 }
 
-export function SuperheroGrid({ heroes, isLoading, error }: SuperheroGridProps) {
+export function SuperheroGrid({ heroes, isLoading, error, searchParams }: SuperheroGridProps) {
   const { isFavorite, addFavorite, removeFavorite } = useFavorites();
   const { isInCompare, addToCompare, removeFromCompare, canAddMore } = useCompare();
   const { toast } = useToast();
