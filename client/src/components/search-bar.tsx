@@ -247,14 +247,14 @@ export function SearchBar({ onSearch, isLoading, initialSearchParams }: SearchBa
                 )}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-80 p-0 border-2">
-              <div className="p-4 border-b bg-muted/50">
+            <DropdownMenuContent className="w-80 p-0 border-2 max-h-[90vh] md:max-h-[600px]">
+              <div className="p-4 border-b bg-muted/50 sticky top-0 z-10">
                 <h3 className="font-semibold text-lg flex items-center">
                   <SlidersHorizontal className="h-4 w-4 mr-2" />
                   Filter Heroes
                 </h3>
               </div>
-              <div className="p-5 space-y-6">
+              <div className="p-5 space-y-6 overflow-y-auto max-h-[calc(90vh-60px)] md:max-h-[540px]">
                 <div>
                   <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Publisher & Alignment</h3>
                   <div className="grid grid-cols-1 gap-4">
