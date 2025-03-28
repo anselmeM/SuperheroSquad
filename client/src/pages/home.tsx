@@ -110,60 +110,22 @@ export default function Home() {
           <SearchBar onSearch={setSearchParams} isLoading={isLoading} />
         </div>
 
-        {/* Show active filters */}
-        {searchParams && (
-          <div className="mb-6">
-            {filteredHeroes && filteredHeroes.length > 0 && (
-              <h2 className="text-lg font-semibold mb-2">
+        {/* Results section with improved UI */}
+        {searchParams && filteredHeroes && filteredHeroes.length > 0 && (
+          <div className="mb-8">
+            <div className="flex justify-between items-center border-b pb-3 mb-4">
+              <h2 className="text-xl font-bold">
                 {filteredHeroes.length} Heroes Found
               </h2>
-            )}
-            
-            {/* Only show filters container if at least one filter is active */}
-            {(searchParams.filters.publisher || 
-              searchParams.filters.alignment || 
-              searchParams.filters.gender || 
-              (searchParams.filters.minIntelligence && searchParams.filters.minIntelligence > 0) ||
-              (searchParams.filters.minStrength && searchParams.filters.minStrength > 0) ||
-              (searchParams.filters.minSpeed && searchParams.filters.minSpeed > 0) ||
-              (searchParams.filters.minPower && searchParams.filters.minPower > 0)) && (
-              <div className="flex flex-wrap gap-2">
-                {searchParams.filters.publisher && (
-                  <Badge variant="outline" className="px-3 py-1 bg-primary/10">
-                    Publisher: {searchParams.filters.publisher}
-                  </Badge>
-                )}
-                {searchParams.filters.alignment && (
-                  <Badge variant="outline" className="px-3 py-1 bg-primary/10">
-                    Alignment: {searchParams.filters.alignment}
-                  </Badge>
-                )}
-                {searchParams.filters.gender && (
-                  <Badge variant="outline" className="px-3 py-1 bg-primary/10">
-                    Gender: {searchParams.filters.gender}
-                  </Badge>
-                )}
-                {searchParams.filters.minIntelligence && searchParams.filters.minIntelligence > 0 && (
-                  <Badge variant="outline" className="px-3 py-1 bg-primary/10">
-                    Intelligence: {searchParams.filters.minIntelligence}+
-                  </Badge>
-                )}
-                {searchParams.filters.minStrength && searchParams.filters.minStrength > 0 && (
-                  <Badge variant="outline" className="px-3 py-1 bg-primary/10">
-                    Strength: {searchParams.filters.minStrength}+
-                  </Badge>
-                )}
-                {searchParams.filters.minSpeed && searchParams.filters.minSpeed > 0 && (
-                  <Badge variant="outline" className="px-3 py-1 bg-primary/10">
-                    Speed: {searchParams.filters.minSpeed}+
-                  </Badge>
-                )}
-                {searchParams.filters.minPower && searchParams.filters.minPower > 0 && (
-                  <Badge variant="outline" className="px-3 py-1 bg-primary/10">
-                    Power: {searchParams.filters.minPower}+
-                  </Badge>
-                )}
-                
+              
+              {/* Only show Clear Filters button if at least one filter is active */}
+              {(searchParams.filters.publisher || 
+                searchParams.filters.alignment || 
+                searchParams.filters.gender || 
+                (searchParams.filters.minIntelligence && searchParams.filters.minIntelligence > 0) ||
+                (searchParams.filters.minStrength && searchParams.filters.minStrength > 0) ||
+                (searchParams.filters.minSpeed && searchParams.filters.minSpeed > 0) ||
+                (searchParams.filters.minPower && searchParams.filters.minPower > 0)) && (
                 <Button 
                   variant="outline" 
                   size="sm"
@@ -181,10 +143,57 @@ export default function Home() {
                       }
                     }));
                   }}
-                  className="ml-2"
                 >
-                  Clear Filters
+                  Clear All Filters
                 </Button>
+              )}
+            </div>
+            
+            {/* Active filters displayed as badges */}
+            {(searchParams.filters.publisher || 
+              searchParams.filters.alignment || 
+              searchParams.filters.gender || 
+              (searchParams.filters.minIntelligence && searchParams.filters.minIntelligence > 0) ||
+              (searchParams.filters.minStrength && searchParams.filters.minStrength > 0) ||
+              (searchParams.filters.minSpeed && searchParams.filters.minSpeed > 0) ||
+              (searchParams.filters.minPower && searchParams.filters.minPower > 0)) && (
+              <div className="flex flex-wrap gap-2 mb-4">
+                <span className="text-sm text-muted-foreground py-1">Filters:</span>
+                {searchParams.filters.publisher && (
+                  <Badge variant="outline" className="px-3 py-1 bg-primary/10 animate-in fade-in duration-300">
+                    Publisher: {searchParams.filters.publisher}
+                  </Badge>
+                )}
+                {searchParams.filters.alignment && (
+                  <Badge variant="outline" className="px-3 py-1 bg-primary/10 animate-in fade-in duration-300">
+                    Alignment: {searchParams.filters.alignment}
+                  </Badge>
+                )}
+                {searchParams.filters.gender && (
+                  <Badge variant="outline" className="px-3 py-1 bg-primary/10 animate-in fade-in duration-300">
+                    Gender: {searchParams.filters.gender}
+                  </Badge>
+                )}
+                {searchParams.filters.minIntelligence && searchParams.filters.minIntelligence > 0 && (
+                  <Badge variant="outline" className="px-3 py-1 bg-primary/10 animate-in fade-in duration-300">
+                    Intelligence: {searchParams.filters.minIntelligence}+
+                  </Badge>
+                )}
+                {searchParams.filters.minStrength && searchParams.filters.minStrength > 0 && (
+                  <Badge variant="outline" className="px-3 py-1 bg-primary/10 animate-in fade-in duration-300">
+                    Strength: {searchParams.filters.minStrength}+
+                  </Badge>
+                )}
+                {searchParams.filters.minSpeed && searchParams.filters.minSpeed > 0 && (
+                  <Badge variant="outline" className="px-3 py-1 bg-primary/10 animate-in fade-in duration-300">
+                    Speed: {searchParams.filters.minSpeed}+
+                  </Badge>
+                )}
+                {searchParams.filters.minPower && searchParams.filters.minPower > 0 && (
+                  <Badge variant="outline" className="px-3 py-1 bg-primary/10 animate-in fade-in duration-300">
+                    Power: {searchParams.filters.minPower}+
+                  </Badge>
+                )}
               </div>
             )}
           </div>
