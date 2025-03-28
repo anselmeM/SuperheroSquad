@@ -31,6 +31,7 @@ import {
 interface SearchBarProps {
   onSearch: (params: SearchParams) => void;
   isLoading?: boolean;
+  initialSearchParams?: SearchParams;
 }
 
 export interface SearchParams {
@@ -51,16 +52,16 @@ interface Suggestion {
   name: string;
 }
 
-export function SearchBar({ onSearch, isLoading }: SearchBarProps) {
-  const [input, setInput] = useState("");
+export function SearchBar({ onSearch, isLoading, initialSearchParams }: SearchBarProps) {
+  const [input, setInput] = useState(initialSearchParams?.term || "");
   const [filters, setFilters] = useState({
-    minIntelligence: 0,
-    minStrength: 0,
-    minSpeed: 0,
-    minPower: 0,
-    publisher: "",
-    alignment: "",
-    gender: "",
+    minIntelligence: initialSearchParams?.filters?.minIntelligence || 0,
+    minStrength: initialSearchParams?.filters?.minStrength || 0,
+    minSpeed: initialSearchParams?.filters?.minSpeed || 0,
+    minPower: initialSearchParams?.filters?.minPower || 0,
+    publisher: initialSearchParams?.filters?.publisher || "",
+    alignment: initialSearchParams?.filters?.alignment || "",
+    gender: initialSearchParams?.filters?.gender || "",
   });
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState<boolean>(false);

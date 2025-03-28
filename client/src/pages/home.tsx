@@ -1,16 +1,19 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SearchBar, type SearchParams } from "@/components/search-bar";
 import { SuperheroGrid } from "@/components/superhero-grid";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { type SearchResponse, type Superhero } from "@shared/schema";
-import { Heart, BarChart2 } from "lucide-react";
+import { Heart, BarChart2, Check, Share } from "lucide-react";
 import { useCompare } from "@/hooks/use-compare";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Home() {
+  const [location, setLocation] = useLocation();
+  const { toast } = useToast();
   const [searchParams, setSearchParams] = useState<SearchParams>({
     term: "",
     filters: {
@@ -26,6 +29,58 @@ export default function Home() {
 
   const { compareList } = useCompare();
   console.log('Home component - compareList length:', compareList.length);
+  
+  // Load search params from URL on first render
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const params = new URLSearchParams(url.search);
+    
+    if (params.size > 0) {
+      const term = params.get('q') || '';
+      
+      // Parse filter params
+      const filters = {
+        minIntelligence: parseInt(params.get('int') || '0'),
+        minStrength: parseInt(params.get('str') || '0'),
+        minSpeed: parseInt(params.get('spd') || '0'),
+        minPower: parseInt(params.get('pwr') || '0'),
+        publisher: params.get('pub') || '',
+        alignment: params.get('align') || '',
+        gender: params.get('gender') || '',
+      };
+      
+      // Update search params
+      setSearchParams({ term, filters });
+    }
+  }, []);
+  
+  // Update URL when search params change
+  useEffect(() => {
+    // Skip updating URL if no search term (initial state)
+    if (!searchParams.term) return;
+    
+    const params = new URLSearchParams();
+    
+    // Add search term
+    if (searchParams.term) {
+      params.set('q', searchParams.term);
+    }
+    
+    // Add filters (only add non-empty/non-zero values)
+    const { filters } = searchParams;
+    
+    if (filters.minIntelligence && filters.minIntelligence > 0) params.set('int', filters.minIntelligence.toString());
+    if (filters.minStrength && filters.minStrength > 0) params.set('str', filters.minStrength.toString());
+    if (filters.minSpeed && filters.minSpeed > 0) params.set('spd', filters.minSpeed.toString());
+    if (filters.minPower && filters.minPower > 0) params.set('pwr', filters.minPower.toString());
+    if (filters.publisher) params.set('pub', filters.publisher);
+    if (filters.alignment) params.set('align', filters.alignment);
+    if (filters.gender) params.set('gender', filters.gender);
+    
+    // Update the URL without refreshing the page
+    const newUrl = params.toString() ? `/?${params.toString()}` : '/';
+    setLocation(newUrl, { replace: true });
+  }, [searchParams, setLocation]);
 
   const { data, isLoading, error } = useQuery<SearchResponse>({
     queryKey: ["/api/search", searchParams.term],
@@ -113,7 +168,11 @@ export default function Home() {
         </div>
 
         <div className="max-w-2xl mx-auto mb-12">
-          <SearchBar onSearch={setSearchParams} isLoading={isLoading} />
+          <SearchBar 
+            onSearch={setSearchParams} 
+            isLoading={isLoading} 
+            initialSearchParams={searchParams}
+          />
         </div>
 
         {/* Results section with improved UI */}
@@ -124,35 +183,78 @@ export default function Home() {
                 {filteredHeroes.length} Heroes Found
               </h2>
               
-              {/* Only show Clear Filters button if at least one filter is active */}
-              {(searchParams.filters.publisher || 
-                searchParams.filters.alignment || 
-                searchParams.filters.gender || 
-                (searchParams.filters.minIntelligence && searchParams.filters.minIntelligence > 0) ||
-                (searchParams.filters.minStrength && searchParams.filters.minStrength > 0) ||
-                (searchParams.filters.minSpeed && searchParams.filters.minSpeed > 0) ||
-                (searchParams.filters.minPower && searchParams.filters.minPower > 0)) && (
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => {
-                    setSearchParams(prev => ({
-                      ...prev,
-                      filters: {
-                        minIntelligence: 0,
-                        minStrength: 0,
-                        minSpeed: 0,
-                        minPower: 0,
-                        publisher: "",
-                        alignment: "",
-                        gender: "",
-                      }
-                    }));
-                  }}
-                >
-                  Clear All Filters
-                </Button>
-              )}
+              <div className="flex flex-wrap gap-2">
+                {/* Share Search button always visible if we have a search term */}
+                {searchParams.term && (
+                  <Button 
+                    variant="default" 
+                    size="sm"
+                    className="bg-primary/80 hover:bg-primary"
+                    onClick={() => {
+                      // Get the current URL from the browser
+                      const shareUrl = window.location.href;
+                      
+                      // Copy to clipboard
+                      navigator.clipboard.writeText(shareUrl)
+                        .then(() => {
+                          // Show a toast notification
+                          toast({
+                            title: "URL Copied!",
+                            description: "Search URL copied to clipboard. Share it with others!",
+                            action: (
+                              <div className="h-8 w-8 bg-green-100 rounded-full flex items-center justify-center text-green-600">
+                                <Check className="h-4 w-4" />
+                              </div>
+                            ),
+                          });
+                        })
+                        .catch(err => {
+                          console.error('Could not copy text: ', err);
+                          
+                          // Show toast with error
+                          toast({
+                            title: "Couldn't copy automatically",
+                            description: "Copy this URL manually: " + shareUrl,
+                            variant: "destructive",
+                          });
+                        });
+                    }}
+                  >
+                    <Share className="h-4 w-4 mr-2" />
+                    Share Search
+                  </Button>
+                )}
+                
+                {/* Only show Clear Filters button if at least one filter is active */}
+                {(searchParams.filters.publisher || 
+                  searchParams.filters.alignment || 
+                  searchParams.filters.gender || 
+                  (searchParams.filters.minIntelligence && searchParams.filters.minIntelligence > 0) ||
+                  (searchParams.filters.minStrength && searchParams.filters.minStrength > 0) ||
+                  (searchParams.filters.minSpeed && searchParams.filters.minSpeed > 0) ||
+                  (searchParams.filters.minPower && searchParams.filters.minPower > 0)) && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      setSearchParams(prev => ({
+                        ...prev,
+                        filters: {
+                          minIntelligence: 0,
+                          minStrength: 0,
+                          minSpeed: 0,
+                          minPower: 0,
+                          publisher: "",
+                          alignment: "",
+                          gender: "",
+                        }
+                      }));
+                    }}
+                  >
+                    Clear All Filters
+                  </Button>
+                )}
+              </div>
             </div>
             
             {/* Active filters displayed as badges */}
