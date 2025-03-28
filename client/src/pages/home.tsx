@@ -61,7 +61,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background relative">
       <main className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-primary/80 to-primary bg-clip-text text-transparent">
@@ -88,6 +88,19 @@ export default function Home() {
           error={error?.message || data?.error}
         />
       </main>
+
+      {/* Floating Compare Button */}
+      {compareList.length > 0 && (
+        <Link href="/compare">
+          <Button 
+            className="fixed bottom-6 right-6 rounded-full shadow-lg animate-in fade-in zoom-in duration-300 z-50"
+            size="lg"
+          >
+            <BarChart2 className="mr-2 h-5 w-5" />
+            Compare Heroes ({compareList.length})
+          </Button>
+        </Link>
+      )}
     </div>
   );
 }

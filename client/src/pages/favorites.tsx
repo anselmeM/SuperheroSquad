@@ -3,13 +3,17 @@ import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import { SuperheroCard } from "@/components/superhero-card";
 import { useFavorites } from "@/hooks/use-favorites";
-import { ArrowLeft } from "lucide-react";
+import { useCompare } from "@/hooks/use-compare";
+import { useToast } from "@/hooks/use-toast";
+import { ArrowLeft, BarChart2 } from "lucide-react";
 
 export default function Favorites() {
   const { favorites, removeFavorite } = useFavorites();
+  const { compareList, isInCompare, addToCompare, removeFromCompare, canAddMore } = useCompare();
+  const { toast } = useToast();
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background relative">
       <main className="container mx-auto px-4 py-8">
         <div className="flex items-center gap-4 mb-8">
           <Link href="/">
@@ -51,12 +55,49 @@ export default function Favorites() {
                   hero={hero}
                   isFavorite={true}
                   onToggleFavorite={() => removeFavorite(hero.id)}
+                  isInCompare={isInCompare(hero.id)}
+                  onToggleCompare={() => {
+                    if (isInCompare(hero.id)) {
+                      removeFromCompare(hero.id);
+                      toast({
+                        title: "Removed from comparison",
+                        description: `${hero.name} has been removed from comparison.`,
+                      });
+                    } else {
+                      if (!canAddMore) {
+                        toast({
+                          variant: "destructive",
+                          title: "Compare limit reached",
+                          description: "You can only compare up to 3 heroes at a time. Remove a hero first.",
+                        });
+                        return;
+                      }
+                      addToCompare(hero);
+                      toast({
+                        title: "Added to comparison",
+                        description: `${hero.name} has been added to comparison.`,
+                      });
+                    }
+                  }}
                 />
               );
             })}
           </div>
         )}
       </main>
+      
+      {/* Floating Compare Button */}
+      {compareList.length > 0 && (
+        <Link href="/compare">
+          <Button 
+            className="fixed bottom-6 right-6 rounded-full shadow-lg animate-in fade-in zoom-in duration-300 z-50"
+            size="lg"
+          >
+            <BarChart2 className="mr-2 h-5 w-5" />
+            Compare Heroes ({compareList.length})
+          </Button>
+        </Link>
+      )}
     </div>
   );
 }
