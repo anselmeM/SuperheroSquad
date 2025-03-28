@@ -95,12 +95,17 @@ export default function Home() {
   const filteredHeroes = data?.results?.filter((hero: Superhero) => {
     const { filters } = searchParams;
     
-    // Check power stats filters
+    // Helper to convert a value to a number
+    const toNumber = (value: string | number): number => {
+      return typeof value === 'string' ? parseInt(value) || 0 : value;
+    };
+    
+    // Check power stats filters - handling both string and number values
     const meetsStatRequirements = 
-      hero.powerstats.intelligence >= (filters.minIntelligence || 0) &&
-      hero.powerstats.strength >= (filters.minStrength || 0) &&
-      hero.powerstats.speed >= (filters.minSpeed || 0) &&
-      hero.powerstats.power >= (filters.minPower || 0);
+      toNumber(hero.powerstats.intelligence) >= (filters.minIntelligence || 0) &&
+      toNumber(hero.powerstats.strength) >= (filters.minStrength || 0) &&
+      toNumber(hero.powerstats.speed) >= (filters.minSpeed || 0) &&
+      toNumber(hero.powerstats.power) >= (filters.minPower || 0);
     
     // Check publisher filter
     const meetsPublisherRequirement = 

@@ -10,7 +10,9 @@ import { useState } from "react";
 // Helper function to calculate the total power of a hero
 function calculateTotalPower(powerstats: Superhero['powerstats']): number {
   const total = Object.values(powerstats).reduce((sum, value) => {
-    return sum + Number(value);
+    // Convert string values to numbers
+    const numValue = typeof value === 'string' ? parseInt(value) || 0 : Number(value);
+    return sum + numValue;
   }, 0);
   return Math.round(total / 6); // Average of all stats
 }
@@ -23,7 +25,10 @@ interface SuperheroCardProps {
   isInCompare?: boolean;
 }
 
-function StatBar({ label, value }: { label: string; value: number }) {
+function StatBar({ label, value }: { label: string; value: number | string }) {
+  // Convert value to a number if it's a string
+  const numericValue = typeof value === 'string' ? parseInt(value) || 0 : value;
+  
   // Determine the icon and color based on the stat label
   const getIconAndColor = () => {
     switch (label.toLowerCase()) {
@@ -48,10 +53,10 @@ function StatBar({ label, value }: { label: string; value: number }) {
   
   // Determine progress color based on value
   const getProgressColor = () => {
-    if (value >= 80) return color;
-    if (value >= 60) return 'bg-emerald-500';
-    if (value >= 40) return 'bg-amber-500';
-    if (value >= 20) return 'bg-orange-500';
+    if (numericValue >= 80) return color;
+    if (numericValue >= 60) return 'bg-emerald-500';
+    if (numericValue >= 40) return 'bg-amber-500';
+    if (numericValue >= 20) return 'bg-orange-500';
     return 'bg-red-500';
   };
 
@@ -87,11 +92,11 @@ function StatBar({ label, value }: { label: string; value: number }) {
           group-hover/stat:${textColor}
           group-hover/stat:font-bold
         `}>
-          {value}%
+          {numericValue}%
         </div>
       </div>
       <Progress 
-        value={value} 
+        value={numericValue} 
         className={`
           h-1.5 
           transition-all 
