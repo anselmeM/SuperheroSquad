@@ -119,32 +119,34 @@ export default function HeroDetail() {
   return (
     <div className="min-h-screen bg-background">
       <main className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
+          <div className="flex items-center gap-4 w-full justify-center md:justify-start">
             <Link href="/">
               <Button variant="ghost" size="icon">
                 <ArrowLeft className="h-6 w-6" />
               </Button>
             </Link>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-primary/80 to-primary bg-clip-text text-transparent">
+            <h1 className="text-4xl font-bangers bg-gradient-to-r from-primary/80 to-primary bg-clip-text text-transparent tracking-wide">
               {hero.name}
             </h1>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 justify-center md:justify-end flex-wrap">
             <Button
               variant="outline"
               className={isFavorite ? "text-red-500" : ""}
               onClick={handleToggleFavorite}
             >
               <Heart className={`mr-2 h-5 w-5 ${isFavorite ? "fill-current" : ""}`} />
-              {isFavorite ? "Remove from Favorites" : "Add to Favorites"}
+              <span className="hidden sm:inline">{isFavorite ? "Remove from Favorites" : "Add to Favorites"}</span>
+              <span className="sm:hidden">{isFavorite ? "Unfavorite" : "Favorite"}</span>
             </Button>
             <Button
               variant={isInCompare(hero.id) ? "default" : "outline"}
               onClick={handleToggleCompare}
             >
               <BarChart2 className="mr-2 h-5 w-5" />
-              {isInCompare(hero.id) ? "Remove from Compare" : "Add to Compare"}
+              <span className="hidden sm:inline">{isInCompare(hero.id) ? "Remove from Compare" : "Add to Compare"}</span>
+              <span className="sm:hidden">{isInCompare(hero.id) ? "Uncompare" : "Compare"}</span>
             </Button>
             <ThemeToggle />
           </div>

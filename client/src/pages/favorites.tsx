@@ -16,18 +16,18 @@ export default function Favorites() {
   return (
     <div className="min-h-screen bg-background relative">
       <main className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
+          <div className="flex items-center gap-4 w-full justify-center md:justify-start">
             <Link href="/">
               <Button variant="ghost" size="icon">
                 <ArrowLeft className="h-6 w-6" />
               </Button>
             </Link>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-primary/80 to-primary bg-clip-text text-transparent">
+            <h1 className="text-4xl font-bangers bg-gradient-to-r from-primary/80 to-primary bg-clip-text text-transparent tracking-wide">
               Favorite Heroes
             </h1>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 justify-center md:justify-end">
             <Link href="/compare">
               <Button 
                 variant={compareList.length > 0 ? "default" : "outline"}
