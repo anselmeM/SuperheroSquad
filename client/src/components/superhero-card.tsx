@@ -21,8 +21,11 @@ export function SuperheroCard({
 }: SuperheroCardProps) {
   console.log(`SuperheroCard - Rendering ${hero.name}, isInCompare:`, isInCompare);
 
-  return (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow">
+  import { Link } from "wouter";
+
+return (
+    <Link href={`/hero/${hero.id}`}>
+      <Card className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
       <div className="aspect-square relative">
         <img 
           src={hero.image.url} 

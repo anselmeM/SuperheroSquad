@@ -7,6 +7,28 @@ const API_TOKEN = process.env.SUPERHERO_API_TOKEN || "e2f8ee39a6603445c2dd55dd9d
 const API_BASE_URL = "https://superheroapi.com/api.php";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  app.get("/api/hero/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const response = await fetch(`${API_BASE_URL}/${API_TOKEN}/${id}`);
+      const data = await response.json();
+
+      if (data.response === 'error') {
+        return res.status(404).json({ error: data.error || 'Hero not found' });
+      }
+
+      // Validate response data
+      const validatedData = await superheroSchema.parseAsync(data);
+      res.json(validatedData);
+    } catch (error) {
+      console.error('Hero details error:', error);
+      if (error instanceof ZodError) {
+        res.status(500).json({ error: "Invalid API response format", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to fetch hero details" });
+      }
+    }
+  });
   app.get("/api/search", async (req, res) => {
     try {
       const { query } = req.query;
