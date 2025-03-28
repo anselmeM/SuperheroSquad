@@ -10,18 +10,28 @@ import { useFavorites } from "@/hooks/use-favorites";
 import { useCompare } from "@/hooks/use-compare";
 import { useToast } from "@/hooks/use-toast";
 import { SearchParams } from "./search-bar";
+import { Pagination } from "./pagination";
 
 interface SuperheroGridProps {
   heroes: Superhero[];
   isLoading: boolean;
   error?: string;
   searchParams?: SearchParams;
+  itemsPerPage?: number;
 }
 
-export function SuperheroGrid({ heroes, isLoading, error, searchParams }: SuperheroGridProps) {
+export function SuperheroGrid({ heroes, isLoading, error, searchParams, itemsPerPage = 8 }: SuperheroGridProps) {
   const { isFavorite, addFavorite, removeFavorite } = useFavorites();
   const { isInCompare, addToCompare, removeFromCompare, canAddMore } = useCompare();
   const { toast } = useToast();
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  
+  // Reset to page 1 when search results change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [heroes]);
   
   // Force update state to trigger re-renders when compare state changes
   const [, forceUpdate] = useState({});
@@ -127,28 +137,56 @@ export function SuperheroGrid({ heroes, isLoading, error, searchParams }: Superh
     );
   }
 
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-      {heroes.map((hero) => {
-        const isCompared = isInCompare(hero.id);
-        console.log(`Rendering hero ${hero.name}, isInCompare:`, isCompared);
+  // Calculate pagination
+  const totalPages = Math.ceil(heroes.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const visibleHeroes = heroes.slice(startIndex, endIndex);
 
-        return (
-          <SuperheroCard 
-            // Use a key that includes the compare state to force re-render when it changes
-            key={`${hero.id}-${isCompared ? 'compared' : 'not-compared'}`} 
-            hero={hero}
-            isFavorite={isFavorite(hero.id)}
-            onToggleFavorite={() => 
-              isFavorite(hero.id) 
-                ? removeFavorite(hero.id)
-                : addFavorite(hero)
-            }
-            isInCompare={isCompared}
-            onToggleCompare={() => handleCompareToggle(hero)}
-          />
-        );
-      })}
+  // Scroll to top when page changes
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  return (
+    <div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {visibleHeroes.map((hero) => {
+          const isCompared = isInCompare(hero.id);
+          console.log(`Rendering hero ${hero.name}, isInCompare:`, isCompared);
+
+          return (
+            <SuperheroCard 
+              // Use a key that includes the compare state to force re-render when it changes
+              key={`${hero.id}-${isCompared ? 'compared' : 'not-compared'}`} 
+              hero={hero}
+              isFavorite={isFavorite(hero.id)}
+              onToggleFavorite={() => 
+                isFavorite(hero.id) 
+                  ? removeFavorite(hero.id)
+                  : addFavorite(hero)
+              }
+              isInCompare={isCompared}
+              onToggleCompare={() => handleCompareToggle(hero)}
+            />
+          );
+        })}
+      </div>
+      
+      {/* Pagination controls */}
+      {heroes.length > itemsPerPage && (
+        <Pagination 
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+        />
+      )}
+      
+      {/* Results summary */}
+      <div className="text-center text-sm font-lato text-muted-foreground mt-4 animate-in fade-in duration-300">
+        Showing <span className="font-major text-primary font-medium">{startIndex + 1} - {Math.min(endIndex, heroes.length)}</span> of <span className="font-major text-primary font-medium">{heroes.length}</span> heroes
+      </div>
     </div>
   );
 }
