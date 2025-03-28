@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { searchResponseSchema, superheroSchema, type Superhero, type SearchResponse } from "@shared/schema";
 import { ZodError } from "zod";
 import { heroCache, searchCache } from "./cache";
-import { WebSocketServer } from "ws";
+import { WebSocketServer, WebSocket } from "ws";
 
 const API_TOKEN = process.env.SUPERHERO_API_TOKEN || "e2f8ee39a6603445c2dd55dd9d8ab2d4";
 const API_BASE_URL = "https://superheroapi.com/api.php";
