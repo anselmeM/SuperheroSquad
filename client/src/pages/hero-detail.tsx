@@ -13,6 +13,7 @@ import { useCompare } from "@/hooks/use-compare";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import type { Superhero } from "@shared/schema";
+import NotFound from "./not-found";
 
 export default function HeroDetail() {
   const [, params] = useRoute("/hero/:id");
@@ -105,15 +106,8 @@ export default function HeroDetail() {
   }
 
   if (error || !hero) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center">
-        <h1 className="text-2xl font-bold mb-4">Error loading hero</h1>
-        <p className="text-muted-foreground mb-6">{error || "Hero not found"}</p>
-        <Link href="/">
-          <Button>Back to Search</Button>
-        </Link>
-      </div>
-    );
+    // Use our custom NotFound component for a better user experience
+    return <NotFound heroError={error || "Hero not found"} />;
   }
 
   return (
