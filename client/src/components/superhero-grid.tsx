@@ -174,18 +174,31 @@ export function SuperheroGrid({ heroes, isLoading, error, searchParams, itemsPer
         })}
       </div>
       
-      {/* Pagination controls */}
+      {/* Pagination section with separator */}
       {heroes.length > itemsPerPage && (
-        <Pagination 
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={handlePageChange}
-        />
+        <>
+          <div className="mt-12 mb-6 flex items-center">
+            <div className="h-0.5 flex-1 bg-gradient-to-r from-transparent via-primary/20 to-transparent"></div>
+            <div className="mx-4 text-primary/70 font-major tracking-widest text-xs uppercase">Navigate Pages</div>
+            <div className="h-0.5 flex-1 bg-gradient-to-r from-transparent via-primary/20 to-transparent"></div>
+          </div>
+          <Pagination 
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+          />
+        </>
       )}
       
-      {/* Results summary */}
-      <div className="text-center text-sm font-lato text-muted-foreground mt-4 animate-in fade-in duration-300">
-        Showing <span className="font-major text-primary font-medium">{startIndex + 1} - {Math.min(endIndex, heroes.length)}</span> of <span className="font-major text-primary font-medium">{heroes.length}</span> heroes
+      {/* Results summary - enhanced style */}
+      <div className="flex justify-center mt-2 animate-in fade-in duration-300">
+        <div className="inline-flex items-center bg-background/80 backdrop-blur-sm px-4 py-1.5 rounded-full border shadow-sm">
+          <span className="text-sm font-lato text-muted-foreground mr-2">Showing</span>
+          <span className="font-major text-primary font-medium px-1.5 py-0.5 rounded bg-primary/10 mx-1">{startIndex + 1} - {Math.min(endIndex, heroes.length)}</span>
+          <span className="text-sm font-lato text-muted-foreground mx-1">of</span>
+          <span className="font-major text-primary font-medium px-1.5 py-0.5 rounded bg-primary/10 mx-1">{heroes.length}</span>
+          <span className="text-sm font-lato text-muted-foreground ml-1">heroes</span>
+        </div>
       </div>
     </div>
   );
