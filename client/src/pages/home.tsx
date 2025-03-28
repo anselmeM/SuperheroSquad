@@ -94,12 +94,18 @@ export default function Home() {
           <h1 className="text-5xl font-bangers bg-gradient-to-r from-primary/80 to-primary bg-clip-text text-transparent tracking-wider text-center md:text-left">
             Superhero Search
           </h1>
-          <div className="flex gap-2 justify-center md:justify-end">
+          <div className="flex gap-2 justify-center md:justify-end flex-wrap">
             <CompareButton />
             <Link href="/favorites">
               <Button variant="outline">
                 <Heart className="mr-2 h-4 w-4" />
                 Favorites
+              </Button>
+            </Link>
+            <Link href="/dashboard">
+              <Button variant="secondary" size="icon" className="bg-primary/10 hover:bg-primary/20">
+                <BarChart2 className="h-4 w-4" />
+                <span className="sr-only">Dashboard</span>
               </Button>
             </Link>
             <ThemeToggle />

@@ -8,6 +8,7 @@ import Home from "@/pages/home";
 import Favorites from "@/pages/favorites";
 import Compare from "@/pages/compare";
 import HeroDetail from "@/pages/hero-detail";
+import Dashboard from "@/pages/dashboard";
 
 function Router() {
   return (
@@ -16,6 +17,7 @@ function Router() {
       <Route path="/favorites" component={Favorites} />
       <Route path="/compare" component={Compare} />
       <Route path="/hero/:id" component={HeroDetail} />
+      <Route path="/dashboard" component={Dashboard} />
       <Route component={NotFound} />
     </Switch>
   );
