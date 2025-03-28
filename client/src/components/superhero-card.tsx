@@ -151,40 +151,41 @@ export function SuperheroCard({
                 h-full 
                 transition-all 
                 duration-500 
-                ${isHovered ? 'scale-110 contrast-[1.1] brightness-[1.1]' : 'scale-100'} 
+                ${isHovered ? 'scale-110 brightness-[1.05]' : 'scale-100'} 
                 will-change-transform
               `}
             />
             
             {/* Hero details overlay on hover */}
-            <div 
-              className={`
-                absolute 
-                inset-0 
-                bg-gradient-to-t 
-                from-black/80 
-                via-black/40 
-                to-transparent 
-                flex 
-                items-end 
-                p-3 
-                opacity-0 
-                transition-all 
-                duration-300 
-                ${isHovered ? 'opacity-100' : ''}
-              `}
-            >
-              {hero.biography?.fullName && (
-                <div className="mb-10">
+            {hero.biography?.["full-name"] && hero.biography["full-name"] !== "" && (
+              <div 
+                className={`
+                  absolute 
+                  bottom-0
+                  left-0
+                  right-0
+                  bg-gradient-to-t 
+                  from-black/90  
+                  to-transparent 
+                  flex 
+                  items-end 
+                  p-3 
+                  opacity-0 
+                  transition-all 
+                  duration-300 
+                  ${isHovered ? 'opacity-100' : ''}
+                `}
+              >
+                <div className="mb-8">
                   <div className="text-white text-xs font-medium uppercase tracking-wider mb-1 opacity-70">
                     Real Name
                   </div>
                   <div className="text-white text-sm font-bold">
-                    {hero.biography.fullName || "Unknown"}
+                    {hero.biography["full-name"] || "Unknown"}
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* View details button on hover */}
             <div 
