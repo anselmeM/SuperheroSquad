@@ -38,58 +38,72 @@ export function useCacheStats() {
     // Only run this effect in the browser
     if (typeof window === 'undefined') return;
 
-    // Setup WebSocket connection
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws`;
-    const socket = new WebSocket(wsUrl);
-    wsRef.current = socket;
-
-    socket.onopen = () => {
-      console.log('WebSocket connected for cache stats');
-      setIsWsConnected(true);
+    // Attempt to setup WebSocket connection with error handling
+    try {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const host = window.location.host;
       
-      // Send a ping message to check the connection
-      socket.send(JSON.stringify({ type: 'ping' }));
-    };
-
-    socket.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        
-        // Only update for cache-stats messages
-        if (data.type === 'cache-stats') {
-          setWsStats({
-            hero: data.hero,
-            search: data.search,
-            timestamp: data.timestamp
-          });
-        }
-        
-        // Log other message types
-        else if (data.type !== 'pong') {
-          console.log('WebSocket message:', data);
-        }
-      } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
+      // Ensure we have a valid host before creating the WebSocket
+      if (!host) {
+        console.error('Invalid host for WebSocket connection');
+        return;
       }
-    };
+      
+      const wsUrl = `${protocol}//${host}/ws`;
+      console.log('Attempting to connect to WebSocket at:', wsUrl);
+      
+      const socket = new WebSocket(wsUrl);
+      wsRef.current = socket;
 
-    socket.onerror = (err) => {
-      console.error('WebSocket error:', err);
-      setIsWsConnected(false);
-    };
+      socket.onopen = () => {
+        console.log('WebSocket connected for cache stats');
+        setIsWsConnected(true);
+        
+        // Send a ping message to check the connection
+        socket.send(JSON.stringify({ type: 'ping' }));
+      };
 
-    socket.onclose = () => {
-      console.log('WebSocket connection closed');
-      setIsWsConnected(false);
-    };
+      socket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          
+          // Only update for cache-stats messages
+          if (data.type === 'cache-stats') {
+            setWsStats({
+              hero: data.hero,
+              search: data.search,
+              timestamp: data.timestamp
+            });
+          }
+          
+          // Log other message types
+          else if (data.type !== 'pong') {
+            console.log('WebSocket message:', data);
+          }
+        } catch (error) {
+          console.error('Error parsing WebSocket message:', error);
+        }
+      };
 
-    // Clean up the WebSocket connection when the component unmounts
-    return () => {
-      if (socket && socket.readyState === WebSocket.OPEN) {
-        socket.close();
-      }
-    };
+      socket.onerror = (err) => {
+        console.error('WebSocket error:', err);
+        setIsWsConnected(false);
+      };
+
+      socket.onclose = () => {
+        console.log('WebSocket connection closed');
+        setIsWsConnected(false);
+      };
+
+      // Clean up the WebSocket connection when the component unmounts
+      return () => {
+        if (socket && socket.readyState === WebSocket.OPEN) {
+          socket.close();
+        }
+      };
+    } catch (err) {
+      console.error('Failed to establish WebSocket connection:', err);
+    }
   }, []);
 
   // Send periodic pings to keep the connection alive
