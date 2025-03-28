@@ -4,13 +4,40 @@ import { type Superhero } from '@shared/schema';
 const COMPARE_KEY = 'superhero-compare';
 const MAX_COMPARE = 3; // Maximum number of heroes to compare
 
+// Enhanced version of the hero object that ensures powerstats are handled correctly
+const ensureValidSuperhero = (hero: Superhero): Superhero => {
+  // Ensure powerstats are defined and convert any string values to numbers safely
+  const powerstats = hero.powerstats || {
+    intelligence: 50,
+    strength: 50,
+    speed: 50,
+    durability: 50,
+    power: 50,
+    combat: 50
+  };
+
+  return {
+    ...hero,
+    powerstats: {
+      intelligence: powerstats.intelligence || 50,
+      strength: powerstats.strength || 50,
+      speed: powerstats.speed || 50, 
+      durability: powerstats.durability || 50,
+      power: powerstats.power || 50,
+      combat: powerstats.combat || 50
+    }
+  };
+};
+
 export function useCompare() {
   const [compareList, setCompareList] = useState<Superhero[]>(() => {
     try {
       const saved = localStorage.getItem(COMPARE_KEY);
       const parsed = saved ? JSON.parse(saved) : [];
-      console.log('Initial compare list:', parsed);
-      return parsed;
+      // Ensure each hero in the compare list has valid powerstats
+      const validatedList = parsed.map(ensureValidSuperhero);
+      console.log('Initial compare list:', validatedList);
+      return validatedList;
     } catch {
       console.error('Failed to load compare list from localStorage');
       return [];
@@ -37,7 +64,9 @@ export function useCompare() {
         console.log('Compare list full');
         return prev;
       }
-      const newList = [...prev, hero];
+      // Ensure the hero has valid powerstats before adding
+      const validHero = ensureValidSuperhero(hero);
+      const newList = [...prev, validHero];
       console.log('New compare list:', newList);
       return newList;
     });

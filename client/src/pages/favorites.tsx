@@ -6,12 +6,89 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { useFavorites } from "@/hooks/use-favorites";
 import { useCompare } from "@/hooks/use-compare";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, BarChart2 } from "lucide-react";
+import { ArrowLeft, BarChart2, Loader2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { type Superhero } from "@shared/schema";
+import { useState, useEffect } from "react";
 
 export default function Favorites() {
   const { favorites, removeFavorite } = useFavorites();
   const { compareList, isInCompare, addToCompare, removeFromCompare, canAddMore } = useCompare();
   const { toast } = useToast();
+  const [favoriteHeroes, setFavoriteHeroes] = useState<{ [key: string]: Superhero | null }>({});
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Fetch hero data for each favorite
+  useEffect(() => {
+    const fetchHeroData = async () => {
+      if (favorites.length === 0) return;
+
+      setIsLoading(true);
+      const heroData: { [key: string]: Superhero | null } = { ...favoriteHeroes };
+
+      // Only fetch for heroes we don't already have
+      const heroesToFetch = favorites.filter(fav => !heroData[fav.id]);
+
+      if (heroesToFetch.length === 0) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        await Promise.all(
+          heroesToFetch.map(async (favorite) => {
+            try {
+              const response = await fetch(`/api/hero/${favorite.id}`);
+              if (!response.ok) {
+                throw new Error(`Failed to fetch hero with ID: ${favorite.id}`);
+              }
+              const data = await response.json();
+              heroData[favorite.id] = data;
+            } catch (error) {
+              console.error(`Error fetching hero ${favorite.id}:`, error);
+              // If we can't fetch the hero, create a placeholder with minimal data
+              heroData[favorite.id] = {
+                id: favorite.id,
+                name: favorite.name,
+                image: { url: favorite.imageUrl },
+                powerstats: {
+                  intelligence: "50",
+                  strength: "50",
+                  speed: "50",
+                  durability: "50",
+                  power: "50",
+                  combat: "50"
+                }
+              } as unknown as Superhero;
+            }
+          })
+        );
+
+        setFavoriteHeroes(heroData);
+      } catch (error) {
+        console.error("Error fetching hero data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchHeroData();
+  }, [favorites]);
+
+  // Create a loading skeleton component
+  const LoadingSkeleton = () => (
+    <div className="space-y-6">
+      <div className="bg-muted animate-pulse h-40 rounded-md"></div>
+      <div className="space-y-2">
+        <div className="bg-muted animate-pulse h-6 rounded-md w-2/3"></div>
+        <div className="bg-muted animate-pulse h-4 rounded-md w-1/2"></div>
+        <div className="bg-muted animate-pulse h-2 rounded-md"></div>
+        <div className="bg-muted animate-pulse h-2 rounded-md"></div>
+        <div className="bg-muted animate-pulse h-2 rounded-md"></div>
+        <div className="bg-muted animate-pulse h-2 rounded-md"></div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-background relative">
@@ -48,22 +125,30 @@ export default function Favorites() {
               <Button>Search Heroes</Button>
             </Link>
           </Card>
+        ) : isLoading ? (
+          // Show loading skeletons while fetching data
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {Array.from({ length: favorites.length }).map((_, i) => (
+              <LoadingSkeleton key={i} />
+            ))}
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {favorites.map((favorite) => {
-              const hero = {
+              const hero = favoriteHeroes[favorite.id] || {
                 id: favorite.id,
                 name: favorite.name,
                 image: { url: favorite.imageUrl },
                 powerstats: {
-                  intelligence: 0,
-                  strength: 0,
-                  speed: 0,
-                  durability: 0,
-                  power: 0,
-                  combat: 0
+                  intelligence: "50",
+                  strength: "50",
+                  speed: "50",
+                  durability: "50",
+                  power: "50",
+                  combat: "50"
                 }
-              };
+              } as unknown as Superhero;
+
               return (
                 <SuperheroCard
                   key={hero.id}

@@ -2,24 +2,12 @@ import { z } from "zod";
 
 // Superhero API response schemas
 export const powerStatsSchema = z.object({
-  intelligence: z.union([z.number(), z.string()]).transform(val => 
-    typeof val === 'string' ? parseInt(val) || 0 : val
-  ),
-  strength: z.union([z.number(), z.string()]).transform(val => 
-    typeof val === 'string' ? parseInt(val) || 0 : val
-  ),
-  speed: z.union([z.number(), z.string()]).transform(val => 
-    typeof val === 'string' ? parseInt(val) || 0 : val
-  ),
-  durability: z.union([z.number(), z.string()]).transform(val => 
-    typeof val === 'string' ? parseInt(val) || 0 : val
-  ),
-  power: z.union([z.number(), z.string()]).transform(val => 
-    typeof val === 'string' ? parseInt(val) || 0 : val
-  ),
-  combat: z.union([z.number(), z.string()]).transform(val => 
-    typeof val === 'string' ? parseInt(val) || 0 : val
-  )
+  intelligence: z.union([z.number(), z.string()]),
+  strength: z.union([z.number(), z.string()]),
+  speed: z.union([z.number(), z.string()]),
+  durability: z.union([z.number(), z.string()]),
+  power: z.union([z.number(), z.string()]),
+  combat: z.union([z.number(), z.string()])
 });
 
 export const biographySchema = z.object({
