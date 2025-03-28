@@ -1,7 +1,7 @@
-import { useState, KeyboardEvent } from "react";
+import { useState, KeyboardEvent, useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Loader2, SlidersHorizontal } from "lucide-react";
+import { Search, Loader2, SlidersHorizontal, X } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,6 +10,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Slider } from "@/components/ui/slider";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 interface SearchBarProps {
   onSearch: (params: SearchParams) => void;
@@ -26,6 +38,11 @@ export interface SearchParams {
   };
 }
 
+interface Suggestion {
+  id: string;
+  name: string;
+}
+
 export function SearchBar({ onSearch, isLoading }: SearchBarProps) {
   const [input, setInput] = useState("");
   const [filters, setFilters] = useState({
@@ -34,9 +51,60 @@ export function SearchBar({ onSearch, isLoading }: SearchBarProps) {
     minSpeed: 0,
     minPower: 0,
   });
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState<boolean>(false);
+  const [open, setOpen] = useState<boolean>(false);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Fetch suggestions when input changes
+  useEffect(() => {
+    if (input.trim().length < 2) {
+      setSuggestions([]);
+      setOpen(false);
+      return;
+    }
+
+    // Debounce the API call
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    debounceTimerRef.current = setTimeout(async () => {
+      setIsLoadingSuggestions(true);
+      try {
+        const response = await fetch(`/api/search?query=${encodeURIComponent(input)}`);
+        const data = await response.json();
+        
+        if (data.response === "success" && data.results) {
+          const heroSuggestions: Suggestion[] = data.results.map((hero: any) => ({
+            id: hero.id,
+            name: hero.name
+          })).slice(0, 5); // Limit to 5 suggestions
+          
+          setSuggestions(heroSuggestions);
+          setOpen(heroSuggestions.length > 0);
+        } else {
+          setSuggestions([]);
+          setOpen(false);
+        }
+      } catch (error) {
+        console.error("Error fetching suggestions:", error);
+        setSuggestions([]);
+      } finally {
+        setIsLoadingSuggestions(false);
+      }
+    }, 300); // 300ms debounce
+
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [input]);
 
   const handleSearch = () => {
     if (input.trim()) {
+      setOpen(false);
       onSearch({
         term: input.trim(),
         filters,
@@ -50,17 +118,83 @@ export function SearchBar({ onSearch, isLoading }: SearchBarProps) {
     }
   };
 
+  const handleSelectSuggestion = (hero: Suggestion) => {
+    setInput(hero.name);
+    setOpen(false);
+    
+    // Trigger search with the selected hero
+    onSearch({
+      term: hero.name,
+      filters,
+    });
+  };
+
+  const clearInput = () => {
+    setInput('');
+    setSuggestions([]);
+    setOpen(false);
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex gap-2">
-        <Input
-          type="text"
-          placeholder="Search for a superhero..."
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyUp={handleKeyPress}
-          className="flex-1"
-        />
+        <div className="relative flex-1">
+          <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+              <div className="relative w-full">
+                <div className="relative">
+                  <Input
+                    type="text"
+                    placeholder="Search for a superhero..."
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyUp={handleKeyPress}
+                    className={`flex-1 pr-8 ${input ? 'pr-8' : ''}`}
+                  />
+                  {input && (
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 p-0" 
+                      onClick={clearInput}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </PopoverTrigger>
+            <PopoverContent className="p-0 w-[300px]" align="start">
+              <Command>
+                <CommandList>
+                  {isLoadingSuggestions ? (
+                    <CommandEmpty>
+                      <div className="flex items-center justify-center p-2">
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        <span>Loading suggestions...</span>
+                      </div>
+                    </CommandEmpty>
+                  ) : suggestions.length === 0 ? (
+                    <CommandEmpty>No superheroes found</CommandEmpty>
+                  ) : (
+                    <CommandGroup heading="Suggestions">
+                      {suggestions.map((hero) => (
+                        <CommandItem
+                          key={hero.id}
+                          value={hero.name}
+                          onSelect={() => handleSelectSuggestion(hero)}
+                          className="cursor-pointer"
+                        >
+                          {hero.name}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  )}
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+        </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="icon">

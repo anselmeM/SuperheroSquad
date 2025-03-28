@@ -37,10 +37,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Search query is required" });
       }
 
+      // For auto-suggestions, we want to respond quickly, so we don't log the full response
+      const isAutoSuggestion = query.length < 4;  // Simple heuristic, can be adjusted
+
       const response = await fetch(`${API_BASE_URL}/${API_TOKEN}/search/${encodeURIComponent(query)}`);
       const data = await response.json();
 
-      console.log('API Response:', JSON.stringify(data, null, 2));
+      if (!isAutoSuggestion) {
+        console.log('API Response:', JSON.stringify(data, null, 2));
+      }
 
       // Validate response data
       const validatedData = await searchResponseSchema.parseAsync(data);
