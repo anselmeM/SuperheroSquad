@@ -90,11 +90,11 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background relative">
       <main className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-5xl font-bangers bg-gradient-to-r from-primary/80 to-primary bg-clip-text text-transparent tracking-wider">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
+          <h1 className="text-5xl font-bangers bg-gradient-to-r from-primary/80 to-primary bg-clip-text text-transparent tracking-wider text-center md:text-left">
             Superhero Search
           </h1>
-          <div className="flex gap-2">
+          <div className="flex gap-2 justify-center md:justify-end">
             <CompareButton />
             <Link href="/favorites">
               <Button variant="outline">
