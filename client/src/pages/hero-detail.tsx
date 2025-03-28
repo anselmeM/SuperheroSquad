@@ -33,10 +33,12 @@ export default function HeroDetail() {
         const response = await fetch(`/api/hero/${heroId}`);
         const data = await response.json();
         
-        if (data.response === "success") {
+        if (data.error) {
+          setError(data.error);
+        } else if (data.id) {
           setHero(data);
         } else {
-          setError(data.error || "Failed to fetch hero details");
+          setError("Failed to fetch hero details");
         }
       } catch (err) {
         setError("An error occurred while fetching hero details");
