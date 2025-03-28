@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { SuperheroCard } from "@/components/superhero-card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
@@ -17,10 +18,40 @@ export function SuperheroGrid({ heroes, isLoading, error }: SuperheroGridProps) 
   const { isFavorite, addFavorite, removeFavorite } = useFavorites();
   const { isInCompare, addToCompare, removeFromCompare, canAddMore } = useCompare();
   const { toast } = useToast();
-
+  
+  // Force update state to trigger re-renders when compare state changes
+  const [, forceUpdate] = useState({});
+  
+  // Set up an effect to re-render when the compare list changes
+  useEffect(() => {
+    // Listen for localStorage changes related to compare list
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'superhero-compare') {
+        console.log('Detected compare list change in localStorage');
+        forceUpdate({});
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Check every second for changes to ensure UI stays in sync
+    const interval = setInterval(() => {
+      forceUpdate({});
+    }, 1000);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
+  }, []);
+  
   const handleCompareToggle = (hero: Superhero) => {
     console.log('Toggling compare for hero:', hero.name);
-    if (isInCompare(hero.id)) {
+    
+    // Determine if the hero is currently in the compare list
+    const currentlyInCompare = isInCompare(hero.id);
+    
+    if (currentlyInCompare) {
       removeFromCompare(hero.id);
       toast({
         title: "Removed from comparison",
@@ -41,6 +72,9 @@ export function SuperheroGrid({ heroes, isLoading, error }: SuperheroGridProps) 
         description: `${hero.name} has been added to comparison.`,
       });
     }
+    
+    // Force component update after state change
+    setTimeout(() => forceUpdate({}), 0);
   };
 
   if (error) {

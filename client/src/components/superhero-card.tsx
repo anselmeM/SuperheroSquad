@@ -32,16 +32,17 @@ export function SuperheroCard({
         <div className="absolute top-2 right-2 flex gap-2">
           {onToggleCompare && (
             <Button
-              variant="ghost"
+              variant={isInCompare ? "secondary" : "ghost"}
               size="icon"
-              className={`${isInCompare ? 'text-primary' : 'text-gray-500'} transition-colors duration-200`}
+              className={`${isInCompare ? 'bg-primary text-white border-primary' : 'text-gray-500'} transition-colors duration-200`}
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 onToggleCompare();
+                console.log(`Compare button clicked for ${hero.name}, new status:`, !isInCompare);
               }}
             >
-              <BarChart2 className={`h-6 w-6 ${isInCompare ? 'fill-current' : ''} transition-all duration-200`} />
+              <BarChart2 className={`h-6 w-6 ${isInCompare ? 'fill-white' : ''} transition-all duration-200`} />
             </Button>
           )}
           <Button
