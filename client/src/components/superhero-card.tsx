@@ -58,17 +58,48 @@ function StatBar({ label, value }: { label: string; value: number }) {
   return (
     <div className="space-y-1 group/stat">
       <div className="flex justify-between text-sm items-center">
-        <span className={`flex items-center gap-1.5 font-medium ${textColor} transition-all duration-300`}>
+        <span className={`
+          flex 
+          items-center 
+          gap-1.5 
+          font-medium 
+          ${textColor} 
+          transition-all 
+          duration-300
+          group-hover/stat:scale-105
+          group-hover/stat:translate-x-0.5
+        `}>
           {icon}
           {label}
         </span>
-        <div className="bg-muted/50 px-2 py-0.5 rounded text-xs font-mono transition-all duration-300 group-hover/stat:bg-muted">
+        <div className={`
+          bg-muted/50 
+          px-2 
+          py-0.5 
+          rounded 
+          text-xs 
+          font-mono 
+          transition-all 
+          duration-300 
+          group-hover/stat:bg-background
+          group-hover/stat:shadow-sm
+          group-hover/stat:${textColor}
+          group-hover/stat:font-bold
+        `}>
           {value}%
         </div>
       </div>
       <Progress 
         value={value} 
-        className={`h-1.5 transition-all duration-300 group-hover:h-2.5 overflow-hidden ${getProgressColor()}`}
+        className={`
+          h-1.5 
+          transition-all 
+          duration-300 
+          group-hover/stat:h-2.5 
+          group-hover/stat:scale-x-[1.01]
+          overflow-hidden 
+          ${getProgressColor()}
+        `}
       />
     </div>
   );
@@ -200,10 +231,33 @@ export function SuperheroCard({
               `}
             >
               <Badge 
-                className="bg-primary/90 text-white font-medium px-3 py-1.5 flex items-center gap-1.5 hover:bg-primary"
+                className={`
+                  bg-primary/90 
+                  hover:bg-primary 
+                  text-white 
+                  font-medium 
+                  px-3 
+                  py-1.5 
+                  flex 
+                  items-center 
+                  gap-1.5 
+                  shadow-md
+                  hover:shadow-lg
+                  transition-all
+                  duration-300
+                  hover:scale-105
+                  active:scale-95
+                `}
               >
                 View Details
-                <ArrowUpRight className="h-3.5 w-3.5" />
+                <ArrowUpRight className={`
+                  h-3.5 
+                  w-3.5 
+                  transition-transform 
+                  duration-300 
+                  group-hover:translate-x-0.5 
+                  group-hover:-translate-y-0.5
+                `} />
               </Badge>
             </div>
             
@@ -218,9 +272,10 @@ export function SuperheroCard({
                   bg-background/80 
                   backdrop-blur-sm 
                   font-semibold
+                  shadow-sm
                   transition-all
                   duration-300
-                  ${isHovered ? 'pl-3 pr-3' : ''}
+                  ${isHovered ? 'pl-3 pr-3 shadow-md translate-x-0.5 translate-y-0.5' : ''}
                 `}
               >
                 {hero.biography.publisher}
@@ -248,13 +303,14 @@ export function SuperheroCard({
                   flex 
                   items-center 
                   gap-1.5
-                  ${isHovered ? 'translate-y-0 opacity-100 scale-110' : ''}
+                  shadow-sm
+                  ${isHovered ? 'translate-y-[-2px] -translate-x-0.5 opacity-100 scale-110 shadow-md' : ''}
                 `}
               >
                 {hero.biography.alignment === "good" ? (
-                  <Shield className="h-3 w-3" />
+                  <Shield className={`h-3 w-3 transition-all duration-300 ${isHovered ? 'animate-pulse' : ''}`} />
                 ) : hero.biography.alignment === "bad" ? (
-                  <Zap className="h-3 w-3" />
+                  <Zap className={`h-3 w-3 transition-all duration-300 ${isHovered ? 'animate-pulse' : ''}`} />
                 ) : null}
                 {hero.biography.alignment.charAt(0).toUpperCase() + hero.biography.alignment.slice(1)}
               </Badge>
