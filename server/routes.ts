@@ -96,10 +96,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Fetch from external API
       const response = await fetch(`${API_BASE_URL}/${API_TOKEN}/${id}`);
+      
+      // Check for HTTP error status codes from the external API
+      if (!response.ok) {
+        const statusCode = response.status;
+        const statusText = response.statusText;
+        
+        console.error(`API HTTP Error: ${statusCode} ${statusText}`);
+        
+        // Map external API status codes to appropriate client responses
+        // 404 -> 404 Not Found
+        // 401/403 -> 502 Bad Gateway (API key issues)
+        // 429 -> 503 Service Unavailable (rate limiting)
+        // Other -> 502 Bad Gateway
+        if (statusCode === 404) {
+          return res.status(404).json({ 
+            error: "Hero Not Found", 
+            message: `No superhero found with ID: ${id}` 
+          });
+        } else if (statusCode === 401 || statusCode === 403) {
+          return res.status(502).json({ 
+            error: "API Authentication Error", 
+            message: "Could not authenticate with the Superhero API. The API key may be invalid or expired."
+          });
+        } else if (statusCode === 429) {
+          return res.status(503).json({ 
+            error: "API Rate Limit Exceeded", 
+            message: "The Superhero API rate limit has been exceeded. Please try again later."
+          });
+        } else {
+          return res.status(502).json({ 
+            error: "External API Error", 
+            message: `The Superhero API returned an error: ${statusCode} ${statusText}`
+          });
+        }
+      }
+      
       const data = await response.json();
 
       if (data.response === 'error') {
-        return res.status(404).json({ error: data.error || 'Hero not found' });
+        return res.status(404).json({ 
+          error: "Hero Not Found", 
+          message: data.error || 'The requested superhero was not found' 
+        });
       }
 
       // Validate response data against our schema to ensure type safety
@@ -109,13 +148,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       heroCache.set(cacheKey, validatedData);
       
       res.json(validatedData);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Hero details error:', error);
+      
       if (error instanceof ZodError) {
-        // Handle schema validation errors separately for better debugging
-        res.status(500).json({ error: "Invalid API response format", details: error.errors });
+        // If the API response doesn't match our schema, it's a Bad Gateway (502)
+        // This indicates the upstream server (Superhero API) sent an invalid response
+        res.status(502).json({ 
+          error: "Invalid API response format", 
+          message: "The upstream API returned a malformed response",
+          details: error.errors 
+        });
+      } else if (error instanceof TypeError && error.message?.includes('fetch')) {
+        // Network errors (cannot connect to API)
+        res.status(503).json({ 
+          error: "Service Unavailable", 
+          message: "Could not connect to the Superhero API" 
+        });
+      } else if (error.response) {
+        // The API returned an error with a status code
+        const statusCode = error.response.status || 502;
+        res.status(statusCode).json({ 
+          error: "External API error", 
+          message: error.message || "Error from Superhero API",
+          details: error.response
+        });
       } else {
-        res.status(500).json({ error: "Failed to fetch hero details" });
+        // Unexpected errors get 500 status
+        res.status(500).json({ 
+          error: "Internal Server Error", 
+          message: "An unexpected error occurred while processing your request"
+        });
       }
     }
   });
@@ -164,6 +227,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Fetch from external API
       const response = await fetch(`${API_BASE_URL}/${API_TOKEN}/search/${encodeURIComponent(query)}`);
+      
+      // Check for HTTP error status codes from the external API
+      if (!response.ok) {
+        const statusCode = response.status;
+        const statusText = response.statusText;
+        
+        console.error(`Search API HTTP Error: ${statusCode} ${statusText} for query: "${query}"`);
+        
+        // Map external API status codes to appropriate client responses
+        // 404 -> 404 Not Found (expected for search with no results)
+        // 401/403 -> 502 Bad Gateway (API key issues)
+        // 429 -> 503 Service Unavailable (rate limiting)
+        // Other -> 502 Bad Gateway
+        if (statusCode === 404) {
+          return res.status(404).json({ 
+            error: "No Results Found", 
+            message: `No superheroes match the search query: "${query}"`
+          });
+        } else if (statusCode === 401 || statusCode === 403) {
+          return res.status(502).json({ 
+            error: "API Authentication Error", 
+            message: "Could not authenticate with the Superhero API. The API key may be invalid or expired."
+          });
+        } else if (statusCode === 429) {
+          return res.status(503).json({ 
+            error: "API Rate Limit Exceeded", 
+            message: "The Superhero API rate limit has been exceeded. Please try again later."
+          });
+        } else {
+          return res.status(502).json({ 
+            error: "External API Error", 
+            message: `The Superhero API returned an error: ${statusCode} ${statusText}`
+          });
+        }
+      }
+      
       const data = await response.json();
 
       // Only log full responses for non-suggestion queries to reduce console noise
@@ -213,7 +312,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.json(mockResponse);
         }
         
-        return res.status(404).json({ error: validatedData.error || 'No results found' });
+        return res.status(404).json({ 
+          error: "No Results Found", 
+          message: validatedData.error || `No superheroes match the search query: "${query}"`,
+          code: 404
+        });
       }
 
       // Cache strategy based on query length
@@ -236,13 +339,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       res.json(validatedData);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Search error:', error);
+      
       if (error instanceof ZodError) {
-        // Handle schema validation errors separately for better debugging
-        res.status(500).json({ error: "Invalid API response format", details: error.errors });
+        // If the API response doesn't match our schema, it's a Bad Gateway (502)
+        // This indicates the upstream server (Superhero API) sent a response that doesn't match our expectations
+        res.status(502).json({ 
+          error: "Invalid API response format", 
+          message: "The Superhero API returned data in an unexpected format",
+          details: error.errors 
+        });
+      } else if (error instanceof TypeError && error.message?.includes('fetch')) {
+        // Network errors (cannot connect to API)
+        res.status(503).json({ 
+          error: "Service Unavailable", 
+          message: "Could not connect to the Superhero API at this time"
+        });
+      } else if (error.response) {
+        // The API returned an error with a status code
+        const statusCode = error.response.status || 502;
+        res.status(statusCode).json({ 
+          error: "External API error", 
+          message: error.message || "Error from Superhero API",
+          details: error.response
+        });
+      } else if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+        // DNS or connection errors
+        res.status(503).json({ 
+          error: "Service Unavailable", 
+          message: "Connection to external API failed",
+          code: error.code
+        });
       } else {
-        res.status(500).json({ error: "Failed to fetch superhero data" });
+        // Unexpected errors get 500 status
+        res.status(500).json({ 
+          error: "Internal Server Error", 
+          message: "An unexpected error occurred while searching for superheroes"
+        });
       }
     }
   });
@@ -297,9 +431,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           search: searchCache.getStats()
         }
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Cache cleanup error:', error);
-      res.status(500).json({ error: "Failed to perform cache cleanup" });
+      res.status(500).json({ 
+        error: "Cache Cleanup Failed", 
+        message: error.message || "Failed to perform cache cleanup operation",
+        code: 500
+      });
     }
   });
 

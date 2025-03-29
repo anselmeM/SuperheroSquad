@@ -84,10 +84,19 @@ export default function Home() {
 
   const { data, isLoading, error } = useQuery<SearchResponse>({
     queryKey: ["/api/search", searchParams.term],
-    queryFn: () =>
-      fetch(`/api/search?query=${encodeURIComponent(searchParams.term)}`).then((res) =>
-        res.json()
-      ),
+    queryFn: async () => {
+      const res = await fetch(`/api/search?query=${encodeURIComponent(searchParams.term)}`);
+      const data = await res.json();
+      
+      // If we received a non-ok response, format the error message
+      if (!res.ok) {
+        const errorMessage = data.message || data.error || 'An unknown error occurred';
+        // Throw an error with both the HTTP status code description and the specific error message
+        throw new Error(`${res.statusText}: ${errorMessage}`);
+      }
+      
+      return data;
+    },
     enabled: searchParams.term.length > 0,
   });
 

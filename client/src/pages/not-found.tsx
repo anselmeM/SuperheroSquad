@@ -38,9 +38,35 @@ function HeroNotFound({ error }: { error: string }) {
           
           <p className="text-lg mb-6 text-muted-foreground">{randomMessage}</p>
           
-          {error && error !== "Hero not found" && (
-            <div className="mb-4 p-3 bg-destructive/10 rounded-md">
-              <p className="text-sm text-destructive">{error}</p>
+          {error && (
+            <div className="mb-4 p-4 bg-destructive/10 rounded-md text-left">
+              {error.includes("API Authentication Error") || error.includes("API key") ? (
+                <>
+                  <p className="text-sm font-semibold text-destructive mb-1">API Authentication Error</p>
+                  <p className="text-xs text-destructive/90">
+                    There's an issue with the Superhero API authentication. This is typically due to an invalid or expired API key.
+                  </p>
+                </>
+              ) : error.includes("Rate Limit") ? (
+                <>
+                  <p className="text-sm font-semibold text-destructive mb-1">API Rate Limit Exceeded</p>
+                  <p className="text-xs text-destructive/90">
+                    We've hit the rate limit for the Superhero API. Please try again in a few minutes.
+                  </p>
+                </>
+              ) : error.includes("Hero Not Found") || error === "Hero not found" ? (
+                <>
+                  <p className="text-sm font-semibold text-destructive mb-1">Hero Not Found</p>
+                  <p className="text-xs text-destructive/90">
+                    The superhero ID doesn't match any known heroes in the database.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm font-semibold text-destructive mb-1">Error Details</p>
+                  <p className="text-xs text-destructive/90">{error}</p>
+                </>
+              )}
             </div>
           )}
           

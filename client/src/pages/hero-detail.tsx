@@ -31,26 +31,53 @@ export default function HeroDetail() {
   useEffect(() => {
     const fetchHero = async () => {
       setLoading(true);
+      setError(null); // Reset error state on each fetch
+      
       try {
         const response = await fetch(`/api/hero/${heroId}`);
         const data = await response.json();
         
-        if (data.error) {
-          setError(data.error);
-        } else if (data.id) {
+        // Check if the response was not ok (non-200 status)
+        if (!response.ok) {
+          // Format the error message using both error and message fields if available
+          const errorMessage = data.message 
+            ? `${data.error}: ${data.message}` 
+            : data.error || `Error ${response.status}: ${response.statusText}`;
+          
+          setError(errorMessage);
+          
+          // Log additional details for monitoring/debugging
+          console.error('Hero fetch error:', {
+            status: response.status,
+            statusText: response.statusText,
+            errorData: data
+          });
+          
+          return; // Exit early since we have an error
+        }
+        
+        if (data.id) {
           setHero(data);
         } else {
-          setError("Failed to fetch hero details");
+          setError("Hero data is incomplete or invalid");
         }
-      } catch (err) {
-        setError("An error occurred while fetching hero details");
-        console.error(err);
+      } catch (err: any) {
+        // Handle network or parsing errors
+        const errorMessage = err.message || "An unexpected error occurred";
+        setError(`Failed to load hero: ${errorMessage}`);
+        console.error('Hero fetch exception:', err);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchHero();
+    // Only fetch if we have a hero ID
+    if (heroId) {
+      fetchHero();
+    } else {
+      setError("No hero ID provided");
+      setLoading(false);
+    }
   }, [heroId]);
 
   const handleToggleFavorite = () => {
@@ -287,14 +314,17 @@ export default function HeroDetail() {
   );
 }
 
-function StatBar({ label, value }: { label: string; value: number }) {
+function StatBar({ label, value }: { label: string; value: string | number }) {
+  // Convert value to number for UI display and progress bar
+  const numericValue = typeof value === 'string' ? parseInt(value) || 0 : value;
+  
   return (
     <div className="space-y-1">
       <div className="flex justify-between text-sm">
         <span>{label}</span>
-        <span>{value}%</span>
+        <span>{numericValue}%</span>
       </div>
-      <Progress value={value} className="h-2" />
+      <Progress value={numericValue} className="h-2" />
     </div>
   );
 }

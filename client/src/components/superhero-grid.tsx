@@ -93,9 +93,22 @@ export function SuperheroGrid({ heroes, isLoading, error, searchParams, itemsPer
 
   if (error) {
     return (
-      <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>{error}</AlertDescription>
+      <Alert variant="destructive" className="max-w-3xl mx-auto mb-8">
+        <div className="flex items-start space-x-2">
+          <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0" />
+          <div className="space-y-2 flex-1">
+            <div className="font-semibold">{typeof error === 'string' ? error.split(':')[0] || 'Error' : 'Search Error'}</div>
+            <AlertDescription className="text-sm opacity-90">
+              {typeof error === 'string' ? error : 'Failed to retrieve superheroes. Please try again later.'}
+            </AlertDescription>
+            {error.includes('API key') && (
+              <div className="mt-2 text-xs px-3 py-2 bg-destructive/20 rounded-sm">
+                <p className="font-medium">Possible API key issue detected</p>
+                <p>The API key for the Superhero API may be invalid or expired. Please check your environment variables.</p>
+              </div>
+            )}
+          </div>
+        </div>
       </Alert>
     );
   }
