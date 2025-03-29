@@ -35,7 +35,8 @@ const ALLOWED_ORIGINS = [
   /^https?:\/\/127\.0\.0\.1(:\d+)?$/,
   // Allow Replit domains
   /^https?:\/\/.*\.replit\.app$/,
-  /^https?:\/\/.*\.repl\.co$/
+  /^https?:\/\/.*\.repl\.co$/,
+  /^https?:\/\/.*\.picard\.replit\.dev$/
 ];
 
 /**
