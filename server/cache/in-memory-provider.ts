@@ -78,13 +78,23 @@ export class InMemoryCacheProvider<T> implements CacheService<T> {
   }
 
   /**
-   * Clean expired items from the cache using a sampling strategy
-   * This reduces performance impact on large caches by only checking a subset of keys
+   * Clean expired items from the cache using a sampling strategy.
+   * This approach checks only a random subset of the cache keys during each run.
+   * 
+   * Why sampling? Iterating over the entire cache can be resource-intensive
+   * and impact performance, especially with a large number of entries. Sampling
+   * provides a good balance between cleanup effectiveness and performance overhead.
+   * 
+   * Note: Because it's sampling-based, it's probabilistic and might not remove
+   * every single expired item immediately upon expiry in one pass, but expired
+   * items will eventually be removed on subsequent checks or cleanup runs.
+   * This trade-off is acceptable for most caching scenarios as it prevents
+   * performance spikes that would occur with full cache iteration.
    * 
    * @param sampleSize Percentage of cache to check (0-1), defaults to 0.2 (20%)
    * @param minSample Minimum number of items to check regardless of percentage
    * @param maxSample Maximum number of items to check at once to prevent excessive CPU usage
-   * @returns Number of items removed
+   * @returns Number of items removed in this run
    */
   cleanup(sampleSize: number = 0.2, minSample: number = 10, maxSample: number = 1000): number {
     const now = Date.now();
