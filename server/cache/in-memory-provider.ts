@@ -78,20 +78,55 @@ export class InMemoryCacheProvider<T> implements CacheService<T> {
   }
 
   /**
-   * Clean expired items from the cache
+   * Clean expired items from the cache using a sampling strategy
+   * This reduces performance impact on large caches by only checking a subset of keys
+   * 
+   * @param sampleSize Percentage of cache to check (0-1), defaults to 0.2 (20%)
+   * @param minSample Minimum number of items to check regardless of percentage
+   * @param maxSample Maximum number of items to check at once to prevent excessive CPU usage
    * @returns Number of items removed
    */
-  cleanup(): number {
+  cleanup(sampleSize: number = 0.2, minSample: number = 10, maxSample: number = 1000): number {
     const now = Date.now();
     let count = 0;
     
-    // Use forEach to avoid iterator issues
-    this.cache.forEach((item, key) => {
-      if (now > item.expiry) {
+    // Get all keys from the cache
+    const allKeys = Array.from(this.cache.keys());
+    const totalKeys = allKeys.length;
+    
+    // Nothing to cleanup if cache is empty
+    if (totalKeys === 0) {
+      return 0;
+    }
+    
+    // Determine how many items to check based on parameters
+    let keysToCheck = Math.max(
+      Math.min(Math.ceil(totalKeys * sampleSize), maxSample),
+      Math.min(minSample, totalKeys)
+    );
+    
+    // Randomly sample keys to check
+    const selectedKeys: string[] = [];
+    
+    // If we're checking almost all keys anyway, just use them all
+    if (keysToCheck > totalKeys * 0.8) {
+      selectedKeys.push(...allKeys);
+    } else {
+      // Reservoir sampling algorithm for random selection
+      for (let i = 0; i < keysToCheck; i++) {
+        const randomIndex = Math.floor(Math.random() * totalKeys);
+        selectedKeys.push(allKeys[randomIndex]);
+      }
+    }
+    
+    // Check selected keys for expiry
+    for (const key of selectedKeys) {
+      const item = this.cache.get(key);
+      if (item && now > item.expiry) {
         this.cache.delete(key);
         count++;
       }
-    });
+    }
     
     return count;
   }

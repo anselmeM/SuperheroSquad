@@ -35,23 +35,31 @@ export class CacheFactory {
   }
   
   /**
-   * Schedule cleanup for all caches
+   * Schedule cleanup for all caches using sampling strategy
    * @param interval Cleanup interval in milliseconds (default: 1 hour)
+   * @param sampleSize Percentage of cache to check (0-1), defaults to 0.2 (20%)
+   * @param minSample Minimum number of items to check regardless of percentage
+   * @param maxSample Maximum number of items to check at once
    */
-  static scheduleCacheCleanup(interval = 60 * 60 * 1000): NodeJS.Timeout {
+  static scheduleCacheCleanup(
+    interval = 60 * 60 * 1000, 
+    sampleSize = 0.2, 
+    minSample = 10, 
+    maxSample = 1000
+  ): NodeJS.Timeout {
     return setInterval(() => {
       let totalCleaned = 0;
       
       if (this.heroCache) {
-        totalCleaned += this.heroCache.cleanup();
+        totalCleaned += this.heroCache.cleanup(sampleSize, minSample, maxSample);
       }
       
       if (this.searchCache) {
-        totalCleaned += this.searchCache.cleanup();
+        totalCleaned += this.searchCache.cleanup(sampleSize, minSample, maxSample);
       }
       
       if (totalCleaned > 0) {
-        console.log(`Cache cleanup: Removed ${totalCleaned} expired entries`);
+        console.log(`Cache cleanup: Removed ${totalCleaned} expired entries (sampling ${Math.round(sampleSize * 100)}% of cache)`);
       }
     }, interval);
   }

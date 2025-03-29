@@ -53,10 +53,13 @@ export interface CacheService<T> {
   size(): number;
   
   /**
-   * Remove expired items from the cache
+   * Remove expired items from the cache using a sampling strategy
+   * @param sampleSize - Percentage of cache to check (0-1), defaults to 0.2 (20%)
+   * @param minSample - Minimum number of items to check regardless of percentage
+   * @param maxSample - Maximum number of items to check at once to prevent excessive CPU usage
    * @returns Number of items removed
    */
-  cleanup(): number;
+  cleanup(sampleSize?: number, minSample?: number, maxSample?: number): number;
   
   /**
    * Get cache statistics
