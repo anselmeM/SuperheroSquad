@@ -1,3 +1,19 @@
+/**
+ * SuperheroCard Component
+ * 
+ * This component displays a superhero card with detailed information and interactive elements.
+ * It shows the hero's image, name, power stats, publisher, alignment, and provides
+ * functionality for adding to favorites and comparing with other heroes.
+ * 
+ * Features:
+ * - Responsive design with hover/press animations
+ * - Visual representation of hero stats with color-coded progress bars
+ * - Favorite and compare hero functionality
+ * - Real-time power score calculation
+ * - Interactive micro-animations for better user experience
+ * - Accessibility considerations for keyboard and touch users
+ */
+
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -7,26 +23,53 @@ import { type Superhero } from "@shared/schema";
 import { Link } from "wouter";
 import { useState } from "react";
 
-// Helper function to calculate the total power of a hero
+/**
+ * Calculates the average power score based on all of a hero's stats
+ * 
+ * @param powerstats - The hero's power statistics object
+ * @returns A number between 0-100 representing the hero's overall power
+ */
 function calculateTotalPower(powerstats: Superhero['powerstats']): number {
-  const total = Object.values(powerstats).reduce((sum, value) => {
-    // Convert string values to numbers
-    const numValue = typeof value === 'string' ? parseInt(value) || 0 : Number(value);
-    return sum + numValue;
-  }, 0);
-  return Math.round(total / 6); // Average of all stats
+  // Get the values of all power stats
+  const values = Object.values(powerstats);
+  
+  // Calculate total by converting any string values to numbers
+  let total = 0;
+  for (const value of values) {
+    // Handle both string and number values from the API
+    if (typeof value === 'string') {
+      total += parseInt(value) || 0;
+    } else {
+      total += value;
+    }
+  }
+  
+  // Return the average as a whole number
+  return Math.round(total / 6); // Average of all stats (intelligence, strength, speed, durability, power, combat)
 }
 
+/**
+ * Props interface for the SuperheroCard component
+ */
 interface SuperheroCardProps {
-  hero: Superhero;
-  isFavorite: boolean;
-  onToggleFavorite: () => void;
-  onToggleCompare?: () => void;
-  isInCompare?: boolean;
+  hero: Superhero;                   // The superhero data to display
+  isFavorite: boolean;               // Whether this hero is in the favorites list
+  onToggleFavorite: () => void;      // Callback to add/remove from favorites
+  onToggleCompare?: () => void;      // Optional callback to add/remove from compare list
+  isInCompare?: boolean;             // Whether this hero is in the compare list
 }
 
+/**
+ * StatBar Component
+ * 
+ * Displays a single hero stat as a labeled progress bar with an appropriate icon
+ * Each stat has a unique color and icon for visual distinction
+ * 
+ * @param label - The name of the stat (e.g., "Intelligence", "Strength")
+ * @param value - The numeric value of the stat (0-100), can be string or number
+ */
 function StatBar({ label, value }: { label: string; value: number | string }) {
-  // Convert value to a number if it's a string
+  // Handle both string and number values from the API
   const numericValue = typeof value === 'string' ? parseInt(value) || 0 : value;
   
   // Determine the icon and color based on the stat label
@@ -111,6 +154,18 @@ function StatBar({ label, value }: { label: string; value: number | string }) {
   );
 }
 
+/**
+ * Main SuperheroCard component
+ * 
+ * Renders a complete card for a superhero with interactive elements
+ * Handles hover states, animations, and user interactions
+ * 
+ * @param hero - The superhero data to display
+ * @param isFavorite - Whether the hero is favorited
+ * @param onToggleFavorite - Callback when favorite status changes
+ * @param onToggleCompare - Optional callback when compare status changes
+ * @param isInCompare - Whether the hero is in the compare list
+ */
 export function SuperheroCard({ 
   hero, 
   isFavorite, 
@@ -118,6 +173,7 @@ export function SuperheroCard({
   onToggleCompare,
   isInCompare 
 }: SuperheroCardProps) {
+  // Animation states for interactivity
   const [isPressed, setIsPressed] = useState(false);
   const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null);
   const [isHovered, setIsHovered] = useState(false);

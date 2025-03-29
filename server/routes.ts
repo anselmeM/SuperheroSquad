@@ -1,3 +1,18 @@
+/**
+ * API Routes Module
+ * 
+ * This module defines all the API endpoints for the superhero application.
+ * It includes endpoints for searching heroes, fetching hero details, and retrieving cache statistics.
+ * The module also sets up WebSocket connections for real-time updates.
+ * 
+ * Features:
+ * - REST API endpoints for hero search and detail retrieval
+ * - In-memory caching with TTL (Time To Live) for performance optimization
+ * - Cache statistics tracking and reporting
+ * - WebSocket server for real-time updates
+ * - Auto-suggestion optimization for search queries
+ */
+
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { searchResponseSchema, superheroSchema, type Superhero, type SearchResponse } from "@shared/schema";
@@ -5,16 +20,23 @@ import { ZodError } from "zod";
 import { heroCache, searchCache } from "./cache";
 import { WebSocketServer, WebSocket } from "ws";
 
+// API configuration
 const API_TOKEN = process.env.SUPERHERO_API_TOKEN || "e2f8ee39a6603445c2dd55dd9d8ab2d4";
 const API_BASE_URL = "https://superheroapi.com/api.php";
 
-// Cache hit/miss counters
+/**
+ * Cache performance tracking counters
+ * Used to calculate hit rates and measure cache effectiveness
+ */
 let heroHits = 0;
 let heroMisses = 0;
 let searchHits = 0;
 let searchMisses = 0;
 
-// Schedule cache cleanup every hour
+/**
+ * Schedules periodic cache cleanup to remove expired entries
+ * Runs every hour to prevent memory leaks from outdated cached data
+ */
 function scheduleCacheCleanup() {
   setInterval(() => {
     const heroCleanupCount = heroCache.cleanup();
@@ -26,8 +48,18 @@ function scheduleCacheCleanup() {
   }, 60 * 60 * 1000); // 1 hour
 }
 
+/**
+ * Registers all API routes and WebSocket server
+ * @param app Express application instance
+ * @returns HTTP server instance
+ */
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Endpoint to get cache stats
+  /**
+   * GET /api/cache-stats
+   * 
+   * Returns current cache statistics including size, hits, misses, and hit rate
+   * Used by the dashboard to display cache performance metrics
+   */
   app.get("/api/cache-stats", (req, res) => {
     res.json({
       hero: {
@@ -45,6 +77,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  /**
+   * GET /api/hero/:id
+   * 
+   * Retrieves detailed information about a specific superhero by ID
+   * Uses caching to improve performance for frequently accessed heroes
+   * 
+   * @param id The superhero ID to retrieve
+   * @returns Complete superhero object with all available information
+   */
   app.get("/api/hero/:id", async (req, res) => {
     try {
       const { id } = req.params;
@@ -62,6 +103,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       heroMisses++;
       console.log(`Cache MISS for hero:${id}, fetching from API`);
       
+      // Fetch from external API
       const response = await fetch(`${API_BASE_URL}/${API_TOKEN}/${id}`);
       const data = await response.json();
 
@@ -69,16 +111,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: data.error || 'Hero not found' });
       }
 
-      // Validate response data
+      // Validate response data against our schema to ensure type safety
       const validatedData = await superheroSchema.parseAsync(data);
       
-      // Cache the validated result
+      // Cache the validated result for future requests (12 hour TTL by default)
       heroCache.set(cacheKey, validatedData);
       
       res.json(validatedData);
     } catch (error) {
       console.error('Hero details error:', error);
       if (error instanceof ZodError) {
+        // Handle schema validation errors separately for better debugging
         res.status(500).json({ error: "Invalid API response format", details: error.errors });
       } else {
         res.status(500).json({ error: "Failed to fetch hero details" });
@@ -86,6 +129,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+   * GET /api/search
+   * 
+   * Searches for superheroes matching the provided query
+   * Implements caching strategies based on query length
+   * Optimizes auto-suggestion requests for better performance
+   * 
+   * @param query The search term to look for
+   * @returns Array of superheroes matching the search criteria
+   */
   app.get("/api/search", async (req, res) => {
     try {
       const { query } = req.query;
@@ -94,11 +147,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Search query is required" });
       }
 
-      // For auto-suggestions, we want to respond quickly, so we don't log the full response
+      // For auto-suggestions, we optimize for speed and reduce logging
       const isAutoSuggestion = query.length < 4;  // Simple heuristic, can be adjusted
       const cacheKey = `search:${query}`;
       
-      // Try to get from cache first (unless it's an auto-suggestion with 1-2 chars, which changes too frequently)
+      // Use cache for queries of sufficient length (to avoid cache churn)
       if (query.length >= 3) {
         const cachedData = searchCache.get(cacheKey) as SearchResponse | undefined;
         
@@ -112,24 +165,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       searchMisses++;
       console.log(`Cache MISS for search:${query}, fetching from API`);
       
+      // Fetch from external API
       const response = await fetch(`${API_BASE_URL}/${API_TOKEN}/search/${encodeURIComponent(query)}`);
       const data = await response.json();
 
+      // Only log full responses for non-suggestion queries to reduce console noise
       if (!isAutoSuggestion) {
         console.log('API Response:', JSON.stringify(data, null, 2));
       }
 
-      // Validate response data
+      // Validate response data against our schema to ensure type safety
       const validatedData = await searchResponseSchema.parseAsync(data);
 
-      // If the API returns an error response
+      // Handle API error responses
       if (validatedData.response === 'error') {
         return res.status(404).json({ error: validatedData.error || 'No results found' });
       }
 
-      // Cache the validated result (for queries >= 3 chars)
+      // Cache strategy based on query length
       if (query.length >= 3) {
-        // Set a shorter TTL for short queries (more likely to change)
+        // Shorter TTL for auto-suggestions since they change frequently
         const ttl = query.length < 4 ? 10 * 60 * 1000 : undefined; // 10 minutes for short queries
         searchCache.set(cacheKey, validatedData, ttl);
       }
@@ -138,6 +193,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Search error:', error);
       if (error instanceof ZodError) {
+        // Handle schema validation errors separately for better debugging
         res.status(500).json({ error: "Invalid API response format", details: error.errors });
       } else {
         res.status(500).json({ error: "Failed to fetch superhero data" });
@@ -148,40 +204,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Start the cache cleanup schedule
   scheduleCacheCleanup();
 
+  /**
+   * Create an HTTP server from the Express app
+   * This is needed to attach the WebSocket server
+   */
   const httpServer = createServer(app);
   
-  // Initialize WebSocket server for real-time updates
+  /**
+   * WebSocket Server Setup
+   * 
+   * Provides real-time updates for cache statistics and other dynamic data
+   * Uses the same HTTP server as the REST API but with a different path
+   * NOTE: We use '/ws' path to avoid conflicts with Vite's HMR websocket
+   */
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
   
+  /**
+   * WebSocket connection handler
+   * Manages client connections, messages, and disconnections
+   */
   wss.on('connection', (ws) => {
     console.log('WebSocket client connected');
     
-    // Send a welcome message
-    ws.send(JSON.stringify({ type: 'connection', message: 'Connected to Superhero API WebSocket' }));
+    // Send a welcome message with connection confirmation
+    ws.send(JSON.stringify({ 
+      type: 'connection', 
+      message: 'Connected to Superhero API WebSocket' 
+    }));
     
-    // Listen for messages from clients
+    /**
+     * Message handler for client requests
+     * Supports different message types for various real-time features
+     */
     ws.on('message', (message) => {
       try {
         const parsedMessage = JSON.parse(message.toString());
         console.log('Received message:', parsedMessage);
         
-        // Handle different message types
+        // Simple ping-pong functionality for connection testing
         if (parsedMessage.type === 'ping') {
-          ws.send(JSON.stringify({ type: 'pong', timestamp: Date.now() }));
+          ws.send(JSON.stringify({ 
+            type: 'pong', 
+            timestamp: Date.now() 
+          }));
         }
       } catch (error) {
         console.error('Error parsing WebSocket message:', error);
       }
     });
     
-    // Handle disconnection
+    /**
+     * Disconnection handler
+     * Cleans up resources when clients disconnect
+     */
     ws.on('close', () => {
       console.log('WebSocket client disconnected');
     });
   });
   
-  // Broadcast cache stats to all connected clients every minute
+  /**
+   * Periodic cache statistics broadcaster
+   * 
+   * Sends updated cache statistics to all connected clients every minute
+   * This enables real-time dashboard updates without polling the API
+   */
   setInterval(() => {
+    // Prepare stats payload with current timestamp
     const stats = {
       type: 'cache-stats',
       timestamp: Date.now(),
@@ -199,6 +287,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     };
     
+    // Broadcast to all connected clients that are ready to receive messages
     wss.clients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
         client.send(JSON.stringify(stats));
