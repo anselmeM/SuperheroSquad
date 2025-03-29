@@ -124,8 +124,14 @@ export default function Compare() {
                           data={stats.map(stat => {
                             const statData: Record<string, any> = { stat: stat.charAt(0).toUpperCase() + stat.slice(1) };
                             compareList.forEach(hero => {
-                              // Convert string value to number
-                              statData[hero.name] = Number(hero.powerstats[stat]);
+                              // Handle null or undefined stats
+                              const statValue = hero.powerstats[stat];
+                              // Only add defined values to the chart
+                              if (statValue !== null && statValue !== undefined) {
+                                statData[hero.name] = statValue;
+                              }
+                              // For null/undefined values, don't include the data point
+                              // which will create a gap in the radar chart
                             });
                             return statData;
                           })}
@@ -147,6 +153,8 @@ export default function Compare() {
                                 stroke={color}
                                 fill={color}
                                 fillOpacity={0.2}
+                                // Set connectNulls to false to show gaps for unknown stats
+                                connectNulls={false}
                               />
                             );
                           })}
@@ -168,18 +176,39 @@ export default function Compare() {
                         <div key={stat} className="mb-6">
                           <h4 className="capitalize text-lg font-medium mb-4">{stat}</h4>
                           <div className="space-y-4">
-                            {compareList.map((hero) => (
-                              <div key={`${hero.id}-${stat}`}>
-                                <div className="flex justify-between text-sm mb-2">
-                                  <span>{hero.name}</span>
-                                  <span>{hero.powerstats[stat]}%</span>
+                            {compareList.map((hero) => {
+                              const statValue = hero.powerstats[stat];
+                              const isUnknown = statValue === null || statValue === undefined;
+                              
+                              return (
+                                <div key={`${hero.id}-${stat}`}>
+                                  <div className="flex justify-between text-sm mb-2">
+                                    <span>{hero.name}</span>
+                                    <span>
+                                      {isUnknown ? (
+                                        <span className="italic text-muted-foreground">Unknown</span>
+                                      ) : (
+                                        `${statValue}%`
+                                      )}
+                                    </span>
+                                  </div>
+                                  {isUnknown ? (
+                                    <div className="h-2 w-full bg-muted relative rounded-full overflow-hidden">
+                                      <div className="absolute inset-0 flex items-center justify-center">
+                                        <div className="h-full w-full bg-muted-foreground/20 flex items-center justify-center">
+                                          <div className="h-[1px] w-full bg-muted-foreground/40"></div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <Progress
+                                      value={Number(statValue)}
+                                      className="h-2"
+                                    />
+                                  )}
                                 </div>
-                                <Progress
-                                  value={Number(hero.powerstats[stat])}
-                                  className="h-2"
-                                />
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         </div>
                       ))}

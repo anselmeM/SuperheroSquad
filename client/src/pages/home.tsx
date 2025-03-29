@@ -104,8 +104,9 @@ export default function Home() {
   const filteredHeroes = data?.results?.filter((hero: Superhero) => {
     const { filters } = searchParams;
     
-    // Helper to convert a value to a number
-    const toNumber = (value: string | number): number => {
+    // Helper to convert a value to a number, handling nulls and undefined
+    const toNumber = (value: string | number | null | undefined): number => {
+      if (value === null || value === undefined) return 0;
       return typeof value === 'string' ? parseInt(value) || 0 : value;
     };
     

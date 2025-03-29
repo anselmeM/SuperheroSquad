@@ -314,17 +314,32 @@ export default function HeroDetail() {
   );
 }
 
-function StatBar({ label, value }: { label: string; value: string | number }) {
+function StatBar({ label, value }: { label: string; value: string | number | null | undefined }) {
+  // Check if the value is missing
+  const isUnknown = value === null || value === undefined;
+  
   // Convert value to number for UI display and progress bar
-  const numericValue = typeof value === 'string' ? parseInt(value) || 0 : value;
+  const numericValue = isUnknown ? 0 : (typeof value === 'string' ? parseInt(value) || 0 : value);
   
   return (
     <div className="space-y-1">
       <div className="flex justify-between text-sm">
         <span>{label}</span>
-        <span>{numericValue}%</span>
+        <span className={isUnknown ? "italic text-muted-foreground" : ""}>
+          {isUnknown ? "Unknown" : `${numericValue}%`}
+        </span>
       </div>
-      <Progress value={numericValue} className="h-2" />
+      {isUnknown ? (
+        <div className="h-2 w-full bg-muted relative rounded-full overflow-hidden">
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="h-full w-full bg-muted-foreground/10 flex items-center justify-center">
+              <div className="h-[1px] w-full bg-muted-foreground/30 border-dashed border-t border-muted-foreground/50"></div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <Progress value={numericValue} className="h-2" />
+      )}
     </div>
   );
 }

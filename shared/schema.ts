@@ -21,12 +21,12 @@ import { z } from "zod";
  * We use z.union to accept both formats to handle API inconsistencies.
  */
 export const powerStatsSchema = z.object({
-  intelligence: z.union([z.number(), z.string()]),
-  strength: z.union([z.number(), z.string()]),
-  speed: z.union([z.number(), z.string()]),
-  durability: z.union([z.number(), z.string()]),
-  power: z.union([z.number(), z.string()]),
-  combat: z.union([z.number(), z.string()])
+  intelligence: z.union([z.number(), z.string(), z.null()]).nullable(),
+  strength: z.union([z.number(), z.string(), z.null()]).nullable(),
+  speed: z.union([z.number(), z.string(), z.null()]).nullable(),
+  durability: z.union([z.number(), z.string(), z.null()]).nullable(),
+  power: z.union([z.number(), z.string(), z.null()]).nullable(),
+  combat: z.union([z.number(), z.string(), z.null()]).nullable()
 });
 
 /**

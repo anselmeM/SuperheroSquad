@@ -35,17 +35,29 @@ function calculateTotalPower(powerstats: Superhero['powerstats']): number {
   
   // Calculate total by converting any string values to numbers
   let total = 0;
+  let validStatsCount = 0;
+  
   for (const value of values) {
+    // Skip null or undefined values
+    if (value === null || value === undefined) {
+      continue;
+    }
+    
     // Handle both string and number values from the API
     if (typeof value === 'string') {
-      total += parseInt(value) || 0;
-    } else {
+      const parsed = parseInt(value);
+      if (!isNaN(parsed)) {
+        total += parsed;
+        validStatsCount++;
+      }
+    } else if (typeof value === 'number') {
       total += value;
+      validStatsCount++;
     }
   }
   
-  // Return the average as a whole number
-  return Math.round(total / 6); // Average of all stats (intelligence, strength, speed, durability, power, combat)
+  // Return the average as a whole number, if no valid stats, return 0
+  return validStatsCount > 0 ? Math.round(total / validStatsCount) : 0;
 }
 
 /**
@@ -68,9 +80,12 @@ interface SuperheroCardProps {
  * @param label - The name of the stat (e.g., "Intelligence", "Strength")
  * @param value - The numeric value of the stat (0-100), can be string or number
  */
-function StatBar({ label, value }: { label: string; value: number | string }) {
-  // Handle both string and number values from the API
-  const numericValue = typeof value === 'string' ? parseInt(value) || 0 : value;
+function StatBar({ label, value }: { label: string; value: number | string | null | undefined }) {
+  // Check if the value is missing
+  const isUnknown = value === null || value === undefined;
+  
+  // Handle both string and number values from the API, or null/undefined
+  const numericValue = isUnknown ? 0 : (typeof value === 'string' ? parseInt(value) || 0 : value);
   
   // Determine the icon and color based on the stat label
   const getIconAndColor = () => {
@@ -132,24 +147,33 @@ function StatBar({ label, value }: { label: string; value: number | string }) {
           duration-300 
           group-hover/stat:bg-background
           group-hover/stat:shadow-sm
-          group-hover/stat:${textColor}
-          group-hover/stat:font-bold
+          ${isUnknown ? 'italic text-muted-foreground' : `group-hover/stat:${textColor} group-hover/stat:font-bold`}
         `}>
-          {numericValue}%
+          {isUnknown ? "Unknown" : `${numericValue}%`}
         </div>
       </div>
-      <Progress 
-        value={numericValue} 
-        className={`
-          h-1.5 
-          transition-all 
-          duration-300 
-          group-hover/stat:h-2.5 
-          group-hover/stat:scale-x-[1.01]
-          overflow-hidden 
-          ${getProgressColor()}
-        `}
-      />
+      {isUnknown ? (
+        <div className="h-1.5 w-full bg-muted relative rounded-full overflow-hidden group-hover/stat:h-2.5 transition-all duration-300">
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="h-full w-full bg-muted-foreground/10 flex items-center justify-center">
+              <div className="h-[1px] w-full bg-muted-foreground/30 border-dashed border-t border-muted-foreground/50"></div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <Progress 
+          value={numericValue} 
+          className={`
+            h-1.5 
+            transition-all 
+            duration-300 
+            group-hover/stat:h-2.5 
+            group-hover/stat:scale-x-[1.01]
+            overflow-hidden 
+            ${getProgressColor()}
+          `}
+        />
+      )}
     </div>
   );
 }

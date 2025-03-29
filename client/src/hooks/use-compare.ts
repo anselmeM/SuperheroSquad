@@ -6,25 +6,32 @@ const MAX_COMPARE = 3; // Maximum number of heroes to compare
 
 // Enhanced version of the hero object that ensures powerstats are handled correctly
 const ensureValidSuperhero = (hero: Superhero): Superhero => {
-  // Ensure powerstats are defined and convert any string values to numbers safely
-  const powerstats = hero.powerstats || {
-    intelligence: 50,
-    strength: 50,
-    speed: 50,
-    durability: 50,
-    power: 50,
-    combat: 50
+  // Make sure powerstats object exists at minimum
+  const powerstats = hero.powerstats || {};
+  
+  // Helper function to parse stats properly
+  const parseStat = (value: string | number | null | undefined): number | null => {
+    if (value === null || value === undefined || value === "") return null;
+    
+    // If it's already a number, return it
+    if (typeof value === 'number') return value;
+    
+    // Try to parse string to number
+    const parsed = Number(value);
+    
+    // Check if the parsed value is a valid number
+    return isNaN(parsed) ? null : parsed;
   };
 
   return {
     ...hero,
     powerstats: {
-      intelligence: powerstats.intelligence || 50,
-      strength: powerstats.strength || 50,
-      speed: powerstats.speed || 50, 
-      durability: powerstats.durability || 50,
-      power: powerstats.power || 50,
-      combat: powerstats.combat || 50
+      intelligence: parseStat(powerstats.intelligence),
+      strength: parseStat(powerstats.strength),
+      speed: parseStat(powerstats.speed), 
+      durability: parseStat(powerstats.durability),
+      power: parseStat(powerstats.power),
+      combat: parseStat(powerstats.combat)
     }
   };
 };
