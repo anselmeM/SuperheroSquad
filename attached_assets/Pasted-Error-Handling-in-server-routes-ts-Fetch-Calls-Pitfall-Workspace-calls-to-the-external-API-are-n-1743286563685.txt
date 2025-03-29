@@ -1,0 +1,98 @@
+Error Handling in server/routes.ts (Fetch Calls)
+
+Pitfall: Workspace calls to the external API are not wrapped in try...catch, potentially leading to unhandled rejections on network errors.
+
+Prompt: "In SuperheroSquad (1)/SuperheroSquad/server/routes.ts, wrap the Workspace calls within the /api/hero/:id and /api/search route handlers inside try...catch blocks to handle potential network errors (e.g., connection refused, DNS issues) before attempting to process the response."
+
+Code Solution (SuperheroSquad (1)/SuperheroSquad/server/routes.ts):
+
+Inside /api/hero/:id handler:
+TypeScript
+
+// ... existing cache check ...
+
+console.log(`Cache MISS for hero:${id}, fetching from API`);
+
+let response: Response; // Declare response outside try
+try {
+  // Fetch from external API - Wrapped in try...catch
+  response = await fetch(`<span class="math-inline">\{API\_BASE\_URL\}/</span>{API_TOKEN}/${id}`);
+} catch (fetchError: any) {
+   // Handle network/fetch specific errors
+   console.error(`Workspace Error for hero ${id}:`, fetchError);
+   return res.status(503).json({
+       error: "Service Unavailable",
+       message: `Could not connect to the Superhero API: ${fetchError.message}`
+   });
+}
+
+// Check for HTTP error status codes from the external API
+if (!response.ok) {
+  // ... existing non-ok handling ...
+  // Example:
+  const statusCode = response.status;
+  const statusText = response.statusText || await response.text(); // Read body for potential error message
+   console.error(`API HTTP Error: ${statusCode} ${statusText}`);
+   // ... (rest of the non-ok handling as before) ...
+   return res.status(502).json({ /* ... error details ... */ });
+}
+
+// Try parsing the successful response
+try {
+    const data = await response.json();
+    // ... existing success logic (validation, caching, sending response) ...
+    const validatedData = await superheroSchema.parseAsync(data);
+    heroCache.set(cacheKey, validatedData);
+    return res.json(validatedData); // Explicit return
+} catch (parseError: any) {
+    console.error('Error parsing API response:', parseError);
+     // Handle JSON parsing errors specifically
+    return res.status(502).json({
+        error: "Invalid API response",
+        message: "Failed to parse the response from the Superhero API."
+    });
+}
+Inside /api/search handler (apply similar try...catch around the Workspace):
+TypeScript
+
+// ... existing cache check ...
+console.log(`Cache MISS for search:${query}, fetching from API`);
+
+let response: Response; // Declare outside try
+try {
+  // Fetch from external API - Wrapped in try...catch
+  response = await fetch(`<span class="math-inline">\{API\_BASE\_URL\}/</span>{API_TOKEN}/search/${encodeURIComponent(query)}`);
+} catch (fetchError: any) {
+  console.error(`Workspace Error for search "${query}":`, fetchError);
+   return res.status(503).json({
+       error: "Service Unavailable",
+       message: `Could not connect to the Superhero API: ${fetchError.message}`
+   });
+}
+
+// Check for HTTP error status codes
+ if (!response.ok) {
+   // ... existing non-ok handling ...
+   // Example:
+   const statusCode = response.status;
+   const statusText = response.statusText || await response.text();
+   console.error(`Search API HTTP Error: ${statusCode} <span class="math-inline">\{statusText\} for query\: "</span>{query}"`);
+   // ... (rest of the non-ok handling as before) ...
+   return res.status(502).json({ /* ... error details ... */ });
+ }
+
+ // Try parsing the successful response
+try {
+    const data = await response.json();
+    // ... existing success logic (validation, caching, sending response) ...
+    const validatedData = await searchResponseSchema.parseAsync(data);
+    // ... (rest of success handling) ...
+    return res.json(validatedData); // Explicit return
+} catch (parseError: any) {
+     console.error('Error parsing search API response:', parseError);
+     return res.status(502).json({
+         error: "Invalid API response",
+         message: "Failed to parse the search response from the Superhero API."
+     });
+}
+(Note: The next(error) call at the end of the main try...catch block in these routes should handle passing other unexpected errors to the global error handler)

@@ -94,13 +94,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`Cache MISS for hero:${id}, fetching from API`);
       
-      // Fetch from external API
-      const response = await fetch(`${API_BASE_URL}/${API_TOKEN}/${id}`);
+      // Declare response outside try block
+      let response: Response;
+      
+      try {
+        // Fetch from external API - Wrapped in try...catch for network errors
+        response = await fetch(`${API_BASE_URL}/${API_TOKEN}/${id}`);
+      } catch (fetchError: any) {
+        // Handle network/fetch specific errors
+        console.error(`Workspace Error for hero ${id}:`, fetchError);
+        return res.status(503).json({
+          error: "Service Unavailable",
+          message: `Could not connect to the Superhero API: ${fetchError.message}`
+        });
+      }
       
       // Check for HTTP error status codes from the external API
       if (!response.ok) {
         const statusCode = response.status;
-        const statusText = response.statusText;
+        const statusText = response.statusText || await response.text().catch(() => "Unknown error"); // Read body for potential error message
         
         console.error(`API HTTP Error: ${statusCode} ${statusText}`);
         
@@ -132,22 +144,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      const data = await response.json();
+      // Try parsing the successful response
+      try {
+        const data = await response.json();
 
-      if (data.response === 'error') {
-        return res.status(404).json({ 
-          error: "Hero Not Found", 
-          message: data.error || 'The requested superhero was not found' 
+        if (data.response === 'error') {
+          return res.status(404).json({ 
+            error: "Hero Not Found", 
+            message: data.error || 'The requested superhero was not found' 
+          });
+        }
+
+        // Validate response data against our schema to ensure type safety
+        const validatedData = await superheroSchema.parseAsync(data);
+        
+        // Cache the validated result for future requests (12 hour TTL by default)
+        heroCache.set(cacheKey, validatedData);
+        
+        return res.json(validatedData); // Explicit return
+      } catch (parseError: any) {
+        console.error('Error parsing API response:', parseError);
+        // Handle JSON parsing errors specifically
+        return res.status(502).json({
+          error: "Invalid API response",
+          message: "Failed to parse the response from the Superhero API."
         });
       }
-
-      // Validate response data against our schema to ensure type safety
-      const validatedData = await superheroSchema.parseAsync(data);
-      
-      // Cache the validated result for future requests (12 hour TTL by default)
-      heroCache.set(cacheKey, validatedData);
-      
-      res.json(validatedData);
     } catch (error: any) {
       console.error('Hero details error:', error);
       
@@ -225,13 +247,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`Cache MISS for search:${query}, fetching from API`);
       
-      // Fetch from external API
-      const response = await fetch(`${API_BASE_URL}/${API_TOKEN}/search/${encodeURIComponent(query)}`);
+      // Declare response outside try block
+      let response: Response;
+      
+      try {
+        // Fetch from external API - Wrapped in try...catch for network errors
+        response = await fetch(`${API_BASE_URL}/${API_TOKEN}/search/${encodeURIComponent(query)}`);
+      } catch (fetchError: any) {
+        // Handle network/fetch specific errors
+        console.error(`Workspace Error for search "${query}":`, fetchError);
+        return res.status(503).json({
+          error: "Service Unavailable",
+          message: `Could not connect to the Superhero API: ${fetchError.message}`
+        });
+      }
       
       // Check for HTTP error status codes from the external API
       if (!response.ok) {
         const statusCode = response.status;
-        const statusText = response.statusText;
+        const statusText = response.statusText || await response.text().catch(() => "Unknown error");
         
         console.error(`Search API HTTP Error: ${statusCode} ${statusText} for query: "${query}"`);
         
@@ -263,82 +297,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      const data = await response.json();
+      // Try parsing the successful response
+      try {
+        const data = await response.json();
 
-      // Only log full responses for non-suggestion queries to reduce console noise
-      if (!isAutoSuggestion) {
-        console.log('API Response:', JSON.stringify(data, null, 2));
-      }
+        // Only log full responses for non-suggestion queries to reduce console noise
+        if (!isAutoSuggestion) {
+          console.log('API Response:', JSON.stringify(data, null, 2));
+        }
 
-      // Validate response data against our schema to ensure type safety
-      const validatedData = await searchResponseSchema.parseAsync(data);
+        // Validate response data against our schema to ensure type safety
+        const validatedData = await searchResponseSchema.parseAsync(data);
 
-      // Handle API error responses
-      if (validatedData.response === 'error') {
-        if (isTestingExpiry) {
-          // For testing expired cache entries, create a mock response
-          const mockResponse: SearchResponse = {
-            response: "success",
-            "results-for": query,
-            results: [
-              {
-                id: `test-${Date.now()}`,
-                name: query,
-                powerstats: {
-                  intelligence: "50",
-                  strength: "50",
-                  speed: "50",
-                  durability: "50",
-                  power: "50",
-                  combat: "50"
-                },
-                image: {
-                  url: "https://via.placeholder.com/150"
+        // Handle API error responses
+        if (validatedData.response === 'error') {
+          if (isTestingExpiry) {
+            // For testing expired cache entries, create a mock response
+            const mockResponse: SearchResponse = {
+              response: "success",
+              "results-for": query,
+              results: [
+                {
+                  id: `test-${Date.now()}`,
+                  name: query,
+                  powerstats: {
+                    intelligence: "50",
+                    strength: "50",
+                    speed: "50",
+                    durability: "50",
+                    power: "50",
+                    combat: "50"
+                  },
+                  image: {
+                    url: "https://via.placeholder.com/150"
+                  }
                 }
-              }
-            ]
-          };
-          
-          // Set custom TTL for testing cleanup
-          console.log(`Setting test search entry with ${customTtl}ms TTL for: ${query}`);
-          searchCache.set(cacheKey, mockResponse, customTtl);
-          
-          // For very short TTLs, wait to ensure expiry
-          if (customTtl <= 2000) {
-            // Wait 1.5x the TTL to ensure expiry
-            await new Promise(resolve => setTimeout(resolve, customTtl * 1.5));
+              ]
+            };
+            
+            // Set custom TTL for testing cleanup
+            console.log(`Setting test search entry with ${customTtl}ms TTL for: ${query}`);
+            searchCache.set(cacheKey, mockResponse, customTtl);
+            
+            // For very short TTLs, wait to ensure expiry
+            if (customTtl <= 2000) {
+              // Wait 1.5x the TTL to ensure expiry
+              await new Promise(resolve => setTimeout(resolve, customTtl * 1.5));
+            }
+            
+            return res.json(mockResponse);
           }
           
-          return res.json(mockResponse);
+          return res.status(404).json({ 
+            error: "No Results Found", 
+            message: validatedData.error || `No superheroes match the search query: "${query}"`,
+            code: 404
+          });
         }
-        
-        return res.status(404).json({ 
-          error: "No Results Found", 
-          message: validatedData.error || `No superheroes match the search query: "${query}"`,
-          code: 404
+
+        // Cache strategy based on query length
+        if (query.length >= 3) {
+          // If testing expiry, use a custom TTL
+          if (isTestingExpiry) {
+            console.log(`Setting test search entry with ${customTtl}ms TTL for: ${query}`);
+            searchCache.set(cacheKey, validatedData, customTtl);
+            
+            // For very short TTLs, wait to ensure expiry
+            if (customTtl <= 2000) {
+              // Wait 1.5x the TTL to ensure expiry
+              await new Promise(resolve => setTimeout(resolve, customTtl * 1.5));
+            }
+          } else {
+            // Normal operation: Shorter TTL for auto-suggestions since they change frequently
+            const ttl = query.length < 4 ? 10 * 60 * 1000 : undefined; // 10 minutes for short queries
+            searchCache.set(cacheKey, validatedData, ttl);
+          }
+        }
+
+        return res.json(validatedData); // Explicit return
+      } catch (parseError: any) {
+        console.error('Error parsing search API response:', parseError);
+        return res.status(502).json({
+          error: "Invalid API response",
+          message: "Failed to parse the search response from the Superhero API."
         });
       }
-
-      // Cache strategy based on query length
-      if (query.length >= 3) {
-        // If testing expiry, use a custom TTL
-        if (isTestingExpiry) {
-          console.log(`Setting test search entry with ${customTtl}ms TTL for: ${query}`);
-          searchCache.set(cacheKey, validatedData, customTtl);
-          
-          // For very short TTLs, wait to ensure expiry
-          if (customTtl <= 2000) {
-            // Wait 1.5x the TTL to ensure expiry
-            await new Promise(resolve => setTimeout(resolve, customTtl * 1.5));
-          }
-        } else {
-          // Normal operation: Shorter TTL for auto-suggestions since they change frequently
-          const ttl = query.length < 4 ? 10 * 60 * 1000 : undefined; // 10 minutes for short queries
-          searchCache.set(cacheKey, validatedData, ttl);
-        }
-      }
-
-      res.json(validatedData);
     } catch (error: any) {
       console.error('Search error:', error);
       
