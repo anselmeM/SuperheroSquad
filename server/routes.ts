@@ -128,11 +128,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
    * Optimizes auto-suggestion requests for better performance
    * 
    * @param query The search term to look for
+   * @param expire (Optional) If true, sets a short TTL for testing expiry
+   * @param ttl (Optional) Custom TTL in milliseconds for testing, used with expire=true
    * @returns Array of superheroes matching the search criteria
    */
   app.get("/api/search", async (req, res) => {
     try {
-      const { query } = req.query;
+      const { query, expire, ttl } = req.query;
 
       if (!query || typeof query !== "string") {
         return res.status(400).json({ error: "Search query is required" });
@@ -142,8 +144,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const isAutoSuggestion = query.length < 4;  // Simple heuristic, can be adjusted
       const cacheKey = `search:${query}`;
       
+      // Determine if we're testing expiry (for demonstration/testing purposes)
+      const isTestingExpiry = expire === 'true';
+      
+      // Parse custom TTL if provided
+      const customTtl = ttl ? parseInt(ttl as string) : 1000; // Default to 1 second for testing
+      
       // Use cache for queries of sufficient length (to avoid cache churn)
-      if (query.length >= 3) {
+      if (query.length >= 3 && !isTestingExpiry) {
         const cachedData = searchCache.get(cacheKey) as SearchResponse | undefined;
         
         if (cachedData) {
@@ -168,14 +176,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Handle API error responses
       if (validatedData.response === 'error') {
+        if (isTestingExpiry) {
+          // For testing expired cache entries, create a mock response
+          const mockResponse: SearchResponse = {
+            response: "success",
+            "results-for": query,
+            results: [
+              {
+                id: `test-${Date.now()}`,
+                name: query,
+                powerstats: {
+                  intelligence: "50",
+                  strength: "50",
+                  speed: "50",
+                  durability: "50",
+                  power: "50",
+                  combat: "50"
+                },
+                image: {
+                  url: "https://via.placeholder.com/150"
+                }
+              }
+            ]
+          };
+          
+          // Set custom TTL for testing cleanup
+          console.log(`Setting test search entry with ${customTtl}ms TTL for: ${query}`);
+          searchCache.set(cacheKey, mockResponse, customTtl);
+          
+          // For very short TTLs, wait to ensure expiry
+          if (customTtl <= 2000) {
+            // Wait 1.5x the TTL to ensure expiry
+            await new Promise(resolve => setTimeout(resolve, customTtl * 1.5));
+          }
+          
+          return res.json(mockResponse);
+        }
+        
         return res.status(404).json({ error: validatedData.error || 'No results found' });
       }
 
       // Cache strategy based on query length
       if (query.length >= 3) {
-        // Shorter TTL for auto-suggestions since they change frequently
-        const ttl = query.length < 4 ? 10 * 60 * 1000 : undefined; // 10 minutes for short queries
-        searchCache.set(cacheKey, validatedData, ttl);
+        // If testing expiry, use a custom TTL
+        if (isTestingExpiry) {
+          console.log(`Setting test search entry with ${customTtl}ms TTL for: ${query}`);
+          searchCache.set(cacheKey, validatedData, customTtl);
+          
+          // For very short TTLs, wait to ensure expiry
+          if (customTtl <= 2000) {
+            // Wait 1.5x the TTL to ensure expiry
+            await new Promise(resolve => setTimeout(resolve, customTtl * 1.5));
+          }
+        } else {
+          // Normal operation: Shorter TTL for auto-suggestions since they change frequently
+          const ttl = query.length < 4 ? 10 * 60 * 1000 : undefined; // 10 minutes for short queries
+          searchCache.set(cacheKey, validatedData, ttl);
+        }
       }
 
       res.json(validatedData);
@@ -187,6 +244,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         res.status(500).json({ error: "Failed to fetch superhero data" });
       }
+    }
+  });
+  
+  /**
+   * GET /api/cleanup
+   * 
+   * Manually triggers a cache cleanup with the specified sampling parameters
+   * This is primarily for testing and debugging purposes
+   * 
+   * @param sampleSize Percentage of cache to check (0-1), defaults to 0.2 (20%)
+   * @param minSample Minimum number of items to check regardless of percentage
+   * @param maxSample Maximum number of items to check at once
+   * @returns Statistics about the cleanup operation
+   */
+  app.get("/api/cleanup", (req, res) => {
+    try {
+      const sampleSize = req.query.sampleSize ? parseFloat(req.query.sampleSize as string) : 0.2;
+      const minSample = req.query.minSample ? parseInt(req.query.minSample as string) : 10;
+      const maxSample = req.query.maxSample ? parseInt(req.query.maxSample as string) : 1000;
+      
+      // Validate parameters
+      if (isNaN(sampleSize) || sampleSize <= 0 || sampleSize > 1) {
+        return res.status(400).json({ error: "sampleSize must be between 0 and 1" });
+      }
+      if (isNaN(minSample) || minSample < 0) {
+        return res.status(400).json({ error: "minSample must be a positive integer" });
+      }
+      if (isNaN(maxSample) || maxSample < 1) {
+        return res.status(400).json({ error: "maxSample must be a positive integer greater than 0" });
+      }
+      
+      // Perform the cleanup with sampling
+      const heroRemoved = heroCache.cleanup(sampleSize, minSample, maxSample);
+      const searchRemoved = searchCache.cleanup(sampleSize, minSample, maxSample);
+      
+      res.json({
+        success: true,
+        timestamp: Date.now(),
+        cleaned: {
+          hero: heroRemoved,
+          search: searchRemoved,
+          total: heroRemoved + searchRemoved
+        },
+        params: {
+          sampleSize,
+          minSample,
+          maxSample
+        },
+        stats: {
+          hero: heroCache.getStats(),
+          search: searchCache.getStats()
+        }
+      });
+    } catch (error) {
+      console.error('Cache cleanup error:', error);
+      res.status(500).json({ error: "Failed to perform cache cleanup" });
     }
   });
 
