@@ -17,7 +17,7 @@ import type { Express, Request } from "express";
 import { createServer, type Server } from "http";
 import { searchResponseSchema, superheroSchema, type Superhero, type SearchResponse } from "@shared/schema";
 import { ZodError } from "zod";
-import { heroCache, searchCache } from "./cache";
+import { heroCache, searchCache, CacheFactory, CacheService } from "./cache";
 import { WebSocketServer, WebSocket } from "ws";
 import { URL } from "url";
 
@@ -39,27 +39,11 @@ const ALLOWED_ORIGINS = [
 ];
 
 /**
- * Cache performance tracking counters
- * Used to calculate hit rates and measure cache effectiveness
- */
-let heroHits = 0;
-let heroMisses = 0;
-let searchHits = 0;
-let searchMisses = 0;
-
-/**
  * Schedules periodic cache cleanup to remove expired entries
- * Runs every hour to prevent memory leaks from outdated cached data
+ * Uses the CacheFactory to schedule cleanup for all cache instances
  */
 function scheduleCacheCleanup() {
-  setInterval(() => {
-    const heroCleanupCount = heroCache.cleanup();
-    const searchCleanupCount = searchCache.cleanup();
-    
-    if (heroCleanupCount > 0 || searchCleanupCount > 0) {
-      console.log(`Cache cleanup: Removed ${heroCleanupCount} hero entries and ${searchCleanupCount} search entries`);
-    }
-  }, 60 * 60 * 1000); // 1 hour
+  CacheFactory.scheduleCacheCleanup();
 }
 
 /**
@@ -75,19 +59,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
    * Used by the dashboard to display cache performance metrics
    */
   app.get("/api/cache-stats", (req, res) => {
+    const heroStats = heroCache.getStats();
+    const searchStats = searchCache.getStats();
+    
     res.json({
-      hero: {
-        size: heroCache.size(),
-        hits: heroHits,
-        misses: heroMisses,
-        hitRate: heroHits + heroMisses === 0 ? 0 : heroHits / (heroHits + heroMisses)
-      },
-      search: {
-        size: searchCache.size(),
-        hits: searchHits,
-        misses: searchMisses,
-        hitRate: searchHits + searchMisses === 0 ? 0 : searchHits / (searchHits + searchMisses)
-      }
+      hero: heroStats,
+      search: searchStats,
+      timestamp: Date.now()
     });
   });
 
@@ -109,12 +87,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const cachedData = heroCache.get(cacheKey) as Superhero | undefined;
       
       if (cachedData) {
-        heroHits++;
         console.log(`Cache HIT for hero:${id}`);
         return res.json(cachedData);
       }
       
-      heroMisses++;
       console.log(`Cache MISS for hero:${id}, fetching from API`);
       
       // Fetch from external API
@@ -170,13 +146,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const cachedData = searchCache.get(cacheKey) as SearchResponse | undefined;
         
         if (cachedData) {
-          searchHits++;
           console.log(`Cache HIT for search:${query}`);
           return res.json(cachedData);
         }
       }
       
-      searchMisses++;
       console.log(`Cache MISS for search:${query}, fetching from API`);
       
       // Fetch from external API
@@ -364,18 +338,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const stats = {
       type: 'cache-stats',
       timestamp: Date.now(),
-      hero: {
-        size: heroCache.size(),
-        hits: heroHits,
-        misses: heroMisses,
-        hitRate: heroHits + heroMisses === 0 ? 0 : heroHits / (heroHits + heroMisses)
-      },
-      search: {
-        size: searchCache.size(),
-        hits: searchHits,
-        misses: searchMisses,
-        hitRate: searchHits + searchMisses === 0 ? 0 : searchHits / (searchHits + searchMisses)
-      }
+      hero: heroCache.getStats(),
+      search: searchCache.getStats()
     };
     
     // Broadcast to all connected clients that are ready to receive messages

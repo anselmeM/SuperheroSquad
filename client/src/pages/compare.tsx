@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useCompare } from "@/hooks/use-compare";
 import { Link } from "wouter";
-import { ArrowLeft, X } from "lucide-react";
+import { ArrowLeft, Database, X } from "lucide-react";
 import { type PowerStats, type Superhero } from "@shared/schema";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { 
@@ -56,6 +56,12 @@ export default function Compare() {
                 Clear All
               </Button>
             )}
+            <Link href="/dashboard">
+              <Button variant="secondary" size="icon" className="bg-primary/10 hover:bg-primary/20">
+                <Database className="h-4 w-4" />
+                <span className="sr-only">Dashboard</span>
+              </Button>
+            </Link>
             <ThemeToggle />
           </div>
         </div>

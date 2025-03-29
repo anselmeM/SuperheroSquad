@@ -1,88 +1,77 @@
-import { useCacheStats, type CacheStats as CacheStatsType } from "@/hooks/use-cache-stats";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Progress } from "@/components/ui/progress";
-import { Skeleton } from "@/components/ui/skeleton";
-import { 
-  Database as DatabaseIcon, 
-  Server as ServerIcon, 
-  Clock as ClockIcon, 
-  PieChart as PieChartIcon,
-  CheckCircle as CheckCircleIcon,
-  XCircle as XCircleIcon,
-  Wifi as WifiIcon,
-  WifiOff as WifiOffIcon
-} from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { useCacheStats, type CacheStatsType } from '@/hooks/use-cache-stats';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Skeleton } from '@/components/ui/skeleton';
+import { AlertCircle, Database, Activity, Clock } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { formatDistanceToNow } from 'date-fns';
 
 /**
  * Component to display cache statistics with real-time updates
  */
 export function CacheStats() {
-  const { stats, isLoading, isWsConnected } = useCacheStats();
-
-  // Create default empty stats
+  const { stats, loading, error, lastUpdated } = useCacheStats();
+  
   const defaultStats: CacheStatsType = {
-    hero: { size: 0, hits: 0, misses: 0, hitRate: 0 },
-    search: { size: 0, hits: 0, misses: 0, hitRate: 0 }
+    size: 0,
+    hits: 0,
+    misses: 0,
+    hitRate: 0
   };
   
-  // Use the stats if available, otherwise use default
-  const safeStats = stats ? (stats as CacheStatsType) : defaultStats;
-
+  // If loading, show skeleton UI
+  if (loading) {
+    return <CacheStatsSkeleton />;
+  }
+  
+  // If error, show error message
+  if (error) {
+    return (
+      <Alert variant="destructive" className="mb-4">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          {error}
+        </AlertDescription>
+      </Alert>
+    );
+  }
+  
   return (
-    <Card className="w-full">
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <DatabaseIcon className="h-5 w-5" />
-              Cache Statistics
-            </CardTitle>
-            <CardDescription>Performance monitoring for API requests</CardDescription>
-          </div>
-          <Badge variant={isWsConnected ? "default" : "outline"} className="h-6">
-            {isWsConnected ? (
-              <WifiIcon className="h-3 w-3 mr-1" />
-            ) : (
-              <WifiOffIcon className="h-3 w-3 mr-1" />
-            )}
-            {isWsConnected ? "Live" : "Polling"}
-          </Badge>
-        </div>
-      </CardHeader>
-      <CardContent>
-        {isLoading ? (
-          <CacheStatsSkeleton />
-        ) : stats ? (
-          <Tabs defaultValue="hero">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="hero">Hero API</TabsTrigger>
-              <TabsTrigger value="search">Search API</TabsTrigger>
-            </TabsList>
-            <TabsContent value="hero" className="space-y-4 mt-4">
-              <CacheStatDetails 
-                title="Hero Details Cache"
-                stats={safeStats.hero}
-                timestamp={safeStats.timestamp}
-              />
-            </TabsContent>
-            <TabsContent value="search" className="space-y-4 mt-4">
-              <CacheStatDetails 
-                title="Search Results Cache"
-                stats={safeStats.search}
-                timestamp={safeStats.timestamp}
-              />
-            </TabsContent>
-          </Tabs>
-        ) : (
-          <div className="text-center p-4 text-muted-foreground">
-            No cache statistics available
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold tracking-tight">Cache Statistics</h2>
+        {lastUpdated && (
+          <div className="flex items-center text-sm text-muted-foreground">
+            <Clock className="mr-1 h-4 w-4" />
+            Updated {formatDistanceToNow(lastUpdated, { addSuffix: true })}
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+      
+      <Tabs defaultValue="hero">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="hero">Hero Cache</TabsTrigger>
+          <TabsTrigger value="search">Search Cache</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="hero">
+          <CacheStatDetails 
+            title="Hero Cache" 
+            stats={stats?.hero || defaultStats} 
+            timestamp={stats?.timestamp}
+          />
+        </TabsContent>
+        
+        <TabsContent value="search">
+          <CacheStatDetails 
+            title="Search Cache" 
+            stats={stats?.search || defaultStats} 
+            timestamp={stats?.timestamp}
+          />
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 }
 
@@ -98,67 +87,71 @@ interface CacheStatDetailsProps {
 }
 
 function CacheStatDetails({ title, stats, timestamp }: CacheStatDetailsProps) {
-  const totalRequests = stats.hits + stats.misses;
-  const hitRatePercent = Math.round(stats.hitRate * 100);
+  // Calculate total cache access count
+  const totalAccesses = stats.hits + stats.misses;
+  
+  // Format hit rate as a percentage
+  const hitRatePercent = stats.hitRate * 100;
+  const formattedHitRate = hitRatePercent.toFixed(1);
   
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h3 className="text-sm font-medium flex items-center gap-2">
-          <ServerIcon className="h-4 w-4" />
-          {title}
-        </h3>
-        {timestamp && (
-          <span className="text-xs text-muted-foreground flex items-center gap-1">
-            <ClockIcon className="h-3 w-3" />
-            Updated {formatDistanceToNow(timestamp, { addSuffix: true })}
-          </span>
-        )}
-      </div>
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Cache Size</CardTitle>
+          <Database className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{stats.size}</div>
+          <p className="text-xs text-muted-foreground">Items stored in cache</p>
+        </CardContent>
+      </Card>
       
-      <div className="space-y-2">
-        <div className="flex items-center justify-between text-xs">
-          <span>Cache Hit Rate</span>
-          <span className="font-mono">{hitRatePercent}%</span>
-        </div>
-        <Progress value={hitRatePercent} className="h-2" />
-      </div>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Cache Hits</CardTitle>
+          <Activity className="h-4 w-4 text-green-500" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{stats.hits}</div>
+          <p className="text-xs text-muted-foreground">
+            {totalAccesses > 0 
+              ? `${(stats.hits / totalAccesses * 100).toFixed(1)}% of total requests`
+              : 'No cache accesses yet'}
+          </p>
+        </CardContent>
+      </Card>
       
-      <div className="grid grid-cols-2 gap-4">
-        <div className="rounded-lg border p-3">
-          <div className="text-xs font-medium text-muted-foreground mb-1">Cache Hits</div>
-          <div className="flex justify-between items-center">
-            <span className="text-2xl font-mono">{stats.hits}</span>
-            <CheckCircleIcon className="h-5 w-5 text-green-500" />
-          </div>
-        </div>
-        
-        <div className="rounded-lg border p-3">
-          <div className="text-xs font-medium text-muted-foreground mb-1">Cache Misses</div>
-          <div className="flex justify-between items-center">
-            <span className="text-2xl font-mono">{stats.misses}</span>
-            <XCircleIcon className="h-5 w-5 text-red-500" />
-          </div>
-        </div>
-      </div>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Cache Misses</CardTitle>
+          <Activity className="h-4 w-4 text-red-500" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{stats.misses}</div>
+          <p className="text-xs text-muted-foreground">
+            {totalAccesses > 0 
+              ? `${(stats.misses / totalAccesses * 100).toFixed(1)}% of total requests`
+              : 'No cache accesses yet'}
+          </p>
+        </CardContent>
+      </Card>
       
-      <div className="grid grid-cols-2 gap-4">
-        <div className="rounded-lg border p-3">
-          <div className="text-xs font-medium text-muted-foreground mb-1">Cached Items</div>
-          <div className="flex justify-between items-center">
-            <span className="text-2xl font-mono">{stats.size}</span>
-            <DatabaseIcon className="h-5 w-5 text-blue-500" />
-          </div>
-        </div>
-        
-        <div className="rounded-lg border p-3">
-          <div className="text-xs font-medium text-muted-foreground mb-1">Total Requests</div>
-          <div className="flex justify-between items-center">
-            <span className="text-2xl font-mono">{totalRequests}</span>
-            <PieChartIcon className="h-5 w-5 text-purple-500" />
-          </div>
-        </div>
-      </div>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Hit Rate</CardTitle>
+          <Activity className="h-4 w-4 text-blue-500" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{formattedHitRate}%</div>
+          <Progress value={hitRatePercent} className="mt-2" />
+          <p className="text-xs text-muted-foreground mt-1">
+            {totalAccesses > 0 
+              ? `Based on ${totalAccesses} total cache accesses`
+              : 'No cache accesses yet'}
+          </p>
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -166,21 +159,26 @@ function CacheStatDetails({ title, stats, timestamp }: CacheStatDetailsProps) {
 function CacheStatsSkeleton() {
   return (
     <div className="space-y-4">
-      <div className="flex justify-between">
-        <Skeleton className="h-4 w-[100px]" />
-        <Skeleton className="h-4 w-[80px]" />
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-5 w-36" />
       </div>
       
-      <Skeleton className="h-2 w-full" />
+      <Skeleton className="h-10 w-full mb-4" />
       
-      <div className="grid grid-cols-2 gap-4">
-        <Skeleton className="h-[80px] w-full" />
-        <Skeleton className="h-[80px] w-full" />
-      </div>
-      
-      <div className="grid grid-cols-2 gap-4">
-        <Skeleton className="h-[80px] w-full" />
-        <Skeleton className="h-[80px] w-full" />
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {Array(4).fill(null).map((_, i) => (
+          <Card key={i}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-4 w-4 rounded-full" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-7 w-16 mb-2" />
+              <Skeleton className="h-3 w-full" />
+            </CardContent>
+          </Card>
+        ))}
       </div>
     </div>
   );

@@ -6,7 +6,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { useFavorites } from "@/hooks/use-favorites";
 import { useCompare } from "@/hooks/use-compare";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, BarChart2, Loader2 } from "lucide-react";
+import { ArrowLeft, BarChart2, Database, Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { type Superhero } from "@shared/schema";
 import { useState, useEffect } from "react";
@@ -112,6 +112,12 @@ export default function Favorites() {
               >
                 <BarChart2 className="mr-2 h-4 w-4" />
                 Compare {compareList.length > 0 ? `(${compareList.length})` : ''}
+              </Button>
+            </Link>
+            <Link href="/dashboard">
+              <Button variant="secondary" size="icon" className="bg-primary/10 hover:bg-primary/20">
+                <Database className="h-4 w-4" />
+                <span className="sr-only">Dashboard</span>
               </Button>
             </Link>
             <ThemeToggle />
