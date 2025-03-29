@@ -13,12 +13,13 @@
  * - Auto-suggestion optimization for search queries
  */
 
-import type { Express } from "express";
+import type { Express, Request } from "express";
 import { createServer, type Server } from "http";
 import { searchResponseSchema, superheroSchema, type Superhero, type SearchResponse } from "@shared/schema";
 import { ZodError } from "zod";
 import { heroCache, searchCache } from "./cache";
 import { WebSocketServer, WebSocket } from "ws";
+import { URL } from "url";
 
 // API configuration
 const API_TOKEN = process.env.SUPERHERO_API_TOKEN;
@@ -26,6 +27,16 @@ if (!API_TOKEN) {
   throw new Error("SUPERHERO_API_TOKEN environment variable is not set. Please set it to a valid Superhero API token.");
 }
 const API_BASE_URL = "https://superheroapi.com/api.php";
+
+// Allowed WebSocket origins (these are validated on connection)
+const ALLOWED_ORIGINS = [
+  // Allow connections from the same server
+  /^https?:\/\/localhost(:\d+)?$/,
+  /^https?:\/\/127\.0\.0\.1(:\d+)?$/,
+  // Allow Replit domains
+  /^https?:\/\/.*\.replit\.app$/,
+  /^https?:\/\/.*\.repl\.co$/
+];
 
 /**
  * Cache performance tracking counters
@@ -220,19 +231,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
    * Uses the same HTTP server as the REST API but with a different path
    * NOTE: We use '/ws' path to avoid conflicts with Vite's HMR websocket
    */
-  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  const wss = new WebSocketServer({ 
+    server: httpServer, 
+    path: '/ws',
+    // Verify client origin for increased security
+    verifyClient: (info, callback) => {
+      const origin = info.origin || '';
+      const isOriginAllowed = validateOrigin(origin);
+      
+      if (!isOriginAllowed) {
+        console.warn(`WebSocket connection rejected. Invalid origin: ${origin}`);
+        return callback(false, 403, 'Origin not allowed');
+      }
+      
+      return callback(true);
+    }
+  });
+  
+  /**
+   * Validates if a connection origin is allowed
+   * Helps prevent cross-site WebSocket hijacking attacks
+   * 
+   * @param origin The origin header from the connection request
+   * @returns Boolean indicating if the origin is permitted
+   */
+  function validateOrigin(origin: string): boolean {
+    try {
+      // Empty origin is allowed for non-browser clients
+      if (!origin) return true;
+      
+      // Check against allowed origins patterns
+      return ALLOWED_ORIGINS.some(pattern => pattern.test(origin));
+    } catch (error) {
+      console.error('Origin validation error:', error);
+      return false;
+    }
+  }
   
   /**
    * WebSocket connection handler
    * Manages client connections, messages, and disconnections
    */
-  wss.on('connection', (ws) => {
-    console.log('WebSocket client connected');
+  wss.on('connection', (ws, req) => {
+    const clientIp = req.socket.remoteAddress || 'unknown';
+    console.log(`WebSocket client connected from ${clientIp}`);
+    
+    // Set a connection timeout to clean up idle/zombie connections
+    const connectionTimeout = setTimeout(() => {
+      console.log('WebSocket connection timeout - closing inactive socket');
+      ws.terminate();
+    }, 30 * 60 * 1000); // 30 minute timeout
     
     // Send a welcome message with connection confirmation
     ws.send(JSON.stringify({ 
       type: 'connection', 
-      message: 'Connected to Superhero API WebSocket' 
+      message: 'Connected to Superhero API WebSocket',
+      timestamp: Date.now()
     }));
     
     /**
@@ -241,18 +295,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
      */
     ws.on('message', (message) => {
       try {
-        const parsedMessage = JSON.parse(message.toString());
-        console.log('Received message:', parsedMessage);
+        // Validate the message is valid JSON and has a limited size
+        const messageStr = message.toString();
+        if (messageStr.length > 10000) {
+          throw new Error('Message too large');
+        }
+        
+        const parsedMessage = JSON.parse(messageStr);
+        
+        // Validate message structure
+        if (!parsedMessage || typeof parsedMessage !== 'object' || !parsedMessage.type) {
+          throw new Error('Invalid message format');
+        }
+        
+        console.log('Received message type:', parsedMessage.type);
         
         // Simple ping-pong functionality for connection testing
         if (parsedMessage.type === 'ping') {
           ws.send(JSON.stringify({ 
             type: 'pong', 
-            timestamp: Date.now() 
+            timestamp: Date.now(),
+            received: parsedMessage.timestamp // Echo back the client timestamp if provided
           }));
+          
+          // Reset connection timeout on activity
+          clearTimeout(connectionTimeout);
         }
       } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
+        console.error('Error processing WebSocket message:', error);
+        
+        // Send error response to client
+        try {
+          ws.send(JSON.stringify({
+            type: 'error',
+            message: 'Invalid message format',
+            timestamp: Date.now()
+          }));
+        } catch (sendError) {
+          console.error('Failed to send error response:', sendError);
+        }
       }
     });
     
@@ -260,8 +341,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
      * Disconnection handler
      * Cleans up resources when clients disconnect
      */
-    ws.on('close', () => {
-      console.log('WebSocket client disconnected');
+    ws.on('close', (code, reason) => {
+      console.log(`WebSocket client disconnected. Code: ${code}, Reason: ${reason || 'No reason provided'}`);
+      clearTimeout(connectionTimeout);
+    });
+    
+    // Handle connection errors
+    ws.on('error', (err) => {
+      console.error('WebSocket connection error:', err);
+      clearTimeout(connectionTimeout);
     });
   });
   
