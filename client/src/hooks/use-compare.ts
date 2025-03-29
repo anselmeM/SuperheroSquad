@@ -11,16 +11,16 @@ const ensureValidSuperhero = (hero: Superhero): Superhero => {
   
   // Helper function to parse stats properly
   const parseStat = (value: string | number | null | undefined): number | null => {
-    if (value === null || value === undefined || value === "") return null;
+    if (value === null || value === undefined || value === "" || String(value).toLowerCase() === 'null') return null;
     
-    // If it's already a number, return it
-    if (typeof value === 'number') return value;
+    // If it's already a number and not NaN, return it
+    if (typeof value === 'number' && !isNaN(value)) return value;
     
     // Try to parse string to number
     const parsed = Number(value);
     
-    // Check if the parsed value is a valid number
-    return isNaN(parsed) ? null : parsed;
+    // Check if the parsed value is a valid finite number
+    return Number.isFinite(parsed) ? parsed : null; // Return null if not a finite number
   };
 
   return {
