@@ -1,26 +1,27 @@
-import { useState, useEffect, useCallback } from 'react';
+Frontend Hook Issues (use-compare.ts)
+
+Pitfall: ensureValidSuperhero function recreated on render; excessive console.log.
+
+Prompt: "In SuperheroSquad (1)/SuperheroSquad/client/src/hooks/use-compare.ts, move the ensureValidSuperhero function definition outside the useCompare hook to prevent its recreation on every render. Also, remove all console.log statements from this file or wrap them in if (process.env.NODE_ENV === 'development') { ... } blocks."
+
+Code Solution (SuperheroSquad (1)/SuperheroSquad/client/src/hooks/use-compare.ts):
+
+TypeScript
+
+import { useState, useEffect, useCallback } from 'react'; // Added useCallback
 import { type Superhero } from '@shared/schema';
 
 const COMPARE_KEY = 'superhero-compare';
-const MAX_COMPARE = 3; // Maximum number of heroes to compare
+const MAX_COMPARE = 3;
 
-// Enhanced version of the hero object that ensures powerstats are handled correctly
+// --- Moved ensureValidSuperhero outside the hook ---
 const ensureValidSuperhero = (hero: Superhero): Superhero => {
-  // Make sure powerstats object exists at minimum
   const powerstats = hero.powerstats || {};
-  
-  // Helper function to parse stats properly
   const parseStat = (value: string | number | null | undefined): number | null => {
-    if (value === null || value === undefined || value === "" || String(value).toLowerCase() === 'null') return null;
-    
-    // If it's already a number and not NaN, return it
-    if (typeof value === 'number' && !isNaN(value)) return value;
-    
-    // Try to parse string to number
-    const parsed = Number(value);
-    
-    // Check if the parsed value is a valid finite number
-    return Number.isFinite(parsed) ? parsed : null; // Return null if not a finite number
+     if (value === null || value === undefined || value === "" || String(value).toLowerCase() === 'null') return null;
+     if (typeof value === 'number' && !isNaN(value)) return value;
+     const parsed = Number(value);
+     return Number.isFinite(parsed) ? parsed : null;
   };
 
   return {
@@ -28,7 +29,7 @@ const ensureValidSuperhero = (hero: Superhero): Superhero => {
     powerstats: {
       intelligence: parseStat(powerstats.intelligence),
       strength: parseStat(powerstats.strength),
-      speed: parseStat(powerstats.speed), 
+      speed: parseStat(powerstats.speed),
       durability: parseStat(powerstats.durability),
       power: parseStat(powerstats.power),
       combat: parseStat(powerstats.combat)
@@ -36,22 +37,16 @@ const ensureValidSuperhero = (hero: Superhero): Superhero => {
   };
 };
 
-// Helper for development-only logging
-const logDebug = (...args: any[]) => {
-  if (process.env.NODE_ENV === 'development') {
-    console.log('[Compare Hook]', ...args);
-  }
-}
-
 export function useCompare() {
   const [compareList, setCompareList] = useState<Superhero[]>(() => {
     try {
       const saved = localStorage.getItem(COMPARE_KEY);
       const parsed = saved ? JSON.parse(saved) : [];
-      // Ensure each hero in the compare list has valid powerstats
       const validatedList = parsed.map(ensureValidSuperhero);
+      // --- Removed console.log ---
       return validatedList;
     } catch {
+      // Keep error log for debugging initial load issues
       console.error('Failed to load compare list from localStorage');
       return [];
     }
@@ -59,13 +54,21 @@ export function useCompare() {
 
   useEffect(() => {
     try {
+      // --- Removed console.log ---
       localStorage.setItem(COMPARE_KEY, JSON.stringify(compareList));
     } catch (error) {
       console.error('Failed to save compare list to localStorage:', error);
     }
   }, [compareList]);
 
-  const addToCompare = useCallback((hero: Superhero) => {
+   // --- Consider wrapping logs like this or removing them ---
+  const logDebug = (...args: any[]) => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[Compare Hook]', ...args);
+    }
+  }
+
+  const addToCompare = useCallback((hero: Superhero) => { // Added useCallback
     logDebug('Attempting to add hero to compare:', hero.name);
     setCompareList(prev => {
       if (prev.some(h => h.id === hero.id)) {
@@ -74,29 +77,32 @@ export function useCompare() {
       }
       if (prev.length >= MAX_COMPARE) {
         logDebug('Compare list full');
+        // Optionally: Use toast notification here
         return prev;
       }
-      // Ensure the hero has valid powerstats before adding
       const validHero = ensureValidSuperhero(hero);
       const newList = [...prev, validHero];
+      logDebug('New compare list:', newList);
       return newList;
     });
-  }, []);
+  }, []); // Empty dependency array assuming MAX_COMPARE is constant
 
-  const removeFromCompare = useCallback((heroId: string) => {
+  const removeFromCompare = useCallback((heroId: string) => { // Added useCallback
     logDebug('Removing hero from compare:', heroId);
     setCompareList(prev => {
       const newList = prev.filter(h => h.id !== heroId);
+      logDebug('New compare list after removal:', newList);
       return newList;
     });
   }, []);
 
-  const isInCompare = useCallback((heroId: string): boolean => {
+  const isInCompare = useCallback((heroId: string): boolean => { // Added useCallback
     const result = compareList.some(h => h.id === heroId);
+    logDebug(`Checking if hero ${heroId} is in compare:`, result);
     return result;
-  }, [compareList]);
+  }, [compareList]); // Dependency on compareList
 
-  const clearCompare = useCallback(() => {
+  const clearCompare = useCallback(() => { // Added useCallback
     logDebug('Clearing compare list');
     setCompareList([]);
   }, []);
@@ -110,3 +116,4 @@ export function useCompare() {
     canAddMore: compareList.length < MAX_COMPARE
   };
 }
+(Self-correction: Added useCallback to memoize the functions returned by the hook, which is good practice when functions are passed down as props)
