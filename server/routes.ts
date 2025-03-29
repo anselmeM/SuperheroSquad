@@ -20,16 +20,19 @@ import { ZodError } from "zod";
 import { heroCache, searchCache, CacheFactory, CacheService } from "./cache";
 import { WebSocketServer, WebSocket } from "ws";
 import { URL } from "url";
+import { appConfig, createLogger } from "./utils/config";
 
 // Make sure WebSocket.OPEN is defined (fixing potential issues with type imports)
 const WS_OPEN = WebSocket.OPEN;
 
-// API configuration
-const API_TOKEN = process.env.SUPERHERO_API_TOKEN;
+// Create a logger instance for the routes module
+const logger = createLogger('routes');
+
+// Get API configuration from centralized config
+const { token: API_TOKEN, baseUrl: API_BASE_URL } = appConfig.api;
 if (!API_TOKEN) {
-  throw new Error("SUPERHERO_API_TOKEN environment variable is not set. Please set it to a valid Superhero API token.");
+  logger.warn("SUPERHERO_API_TOKEN environment variable is not set. API requests will fail.");
 }
-const API_BASE_URL = "https://superheroapi.com/api.php";
 
 // Allowed WebSocket origins (these are validated on connection)
 const ALLOWED_ORIGINS = [
@@ -101,11 +104,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const cachedData = heroCache.get(cacheKey) as Superhero | undefined;
       
       if (cachedData) {
-        console.log(`Cache HIT for hero:${id}`);
+        logger.debug(`Cache HIT for hero:${id}`);
         return res.json(cachedData);
       }
       
-      console.log(`Cache MISS for hero:${id}, fetching from API`);
+      logger.debug(`Cache MISS for hero:${id}, fetching from API`);
       
       // Declare response outside try block
       let response: Response;
@@ -115,7 +118,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         response = await fetch(`${API_BASE_URL}/${API_TOKEN}/${id}`);
       } catch (fetchError: any) {
         // Handle network/fetch specific errors
-        console.error(`Workspace Error for hero ${id}:`, fetchError);
+        logger.error(`Workspace Error for hero ${id}:`, fetchError);
         return res.status(503).json({
           error: "Service Unavailable",
           message: `Could not connect to the Superhero API: ${fetchError.message}`
@@ -127,7 +130,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const statusCode = response.status;
         const statusText = response.statusText || await response.text().catch(() => "Unknown error"); // Read body for potential error message
         
-        console.error(`API HTTP Error: ${statusCode} ${statusText}`);
+        logger.error(`API HTTP Error: ${statusCode} ${statusText}`);
         
         // Map external API status codes to appropriate client responses
         // 404 -> 404 Not Found
@@ -176,7 +179,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         return res.json(validatedData); // Explicit return
       } catch (parseError: any) {
-        console.error('Error parsing API response:', parseError);
+        logger.error('Error parsing API response:', parseError);
         // Handle JSON parsing errors specifically
         return res.status(502).json({
           error: "Invalid API response",
@@ -184,7 +187,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
     } catch (error: any) {
-      console.error('Hero details error:', error);
+      logger.error('Hero details error:', error);
       
       if (error instanceof ZodError) {
         // If the API response doesn't match our schema, it's a Bad Gateway (502)
@@ -253,12 +256,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const cachedData = searchCache.get(cacheKey) as SearchResponse | undefined;
         
         if (cachedData) {
-          console.log(`Cache HIT for search:${query}`);
+          logger.debug(`Cache HIT for search:${query}`);
           return res.json(cachedData);
         }
       }
       
-      console.log(`Cache MISS for search:${query}, fetching from API`);
+      logger.debug(`Cache MISS for search:${query}, fetching from API`);
       
       // Declare response outside try block
       let response: Response;
@@ -268,7 +271,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         response = await fetch(`${API_BASE_URL}/${API_TOKEN}/search/${encodeURIComponent(query)}`);
       } catch (fetchError: any) {
         // Handle network/fetch specific errors
-        console.error(`Workspace Error for search "${query}":`, fetchError);
+        logger.error(`Workspace Error for search "${query}":`, fetchError);
         return res.status(503).json({
           error: "Service Unavailable",
           message: `Could not connect to the Superhero API: ${fetchError.message}`
@@ -280,7 +283,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const statusCode = response.status;
         const statusText = response.statusText || await response.text().catch(() => "Unknown error");
         
-        console.error(`Search API HTTP Error: ${statusCode} ${statusText} for query: "${query}"`);
+        logger.error(`Search API HTTP Error: ${statusCode} ${statusText} for query: "${query}"`);
         
         // Map external API status codes to appropriate client responses
         // 404 -> 404 Not Found (expected for search with no results)
@@ -316,7 +319,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Only log full responses for non-suggestion queries to reduce console noise
         if (!isAutoSuggestion) {
-          console.log('API Response:', JSON.stringify(data, null, 2));
+          logger.debug('API Response:', JSON.stringify(data, null, 2));
         }
 
         // Validate response data against our schema to ensure type safety
@@ -349,7 +352,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             };
             
             // Set custom TTL for testing cleanup
-            console.log(`Setting test search entry with ${customTtl}ms TTL for: ${query}`);
+            logger.debug(`Setting test search entry with ${customTtl}ms TTL for: ${query}`);
             searchCache.set(cacheKey, mockResponse, customTtl);
             
             // For very short TTLs, wait to ensure expiry
@@ -372,7 +375,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (query.length >= 3) {
           // If testing expiry, use a custom TTL
           if (isTestingExpiry) {
-            console.log(`Setting test search entry with ${customTtl}ms TTL for: ${query}`);
+            logger.debug(`Setting test search entry with ${customTtl}ms TTL for: ${query}`);
             searchCache.set(cacheKey, validatedData, customTtl);
             
             // For very short TTLs, wait to ensure expiry
@@ -389,14 +392,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         return res.json(validatedData); // Explicit return
       } catch (parseError: any) {
-        console.error('Error parsing search API response:', parseError);
+        logger.error('Error parsing search API response:', parseError);
         return res.status(502).json({
           error: "Invalid API response",
           message: "Failed to parse the search response from the Superhero API."
         });
       }
     } catch (error: any) {
-      console.error('Search error:', error);
+      logger.error('Search error:', error);
       
       if (error instanceof ZodError) {
         // If the API response doesn't match our schema, it's a Bad Gateway (502)
@@ -488,7 +491,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
     } catch (error: any) {
-      console.error('Cache cleanup error:', error);
+      logger.error('Cache cleanup error:', error);
       res.status(500).json({ 
         error: "Cache Cleanup Failed", 
         message: error.message || "Failed to perform cache cleanup operation",
@@ -567,7 +570,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
    * Uses the same HTTP server as the REST API but with a different path
    * NOTE: We use '/ws' path to avoid conflicts with Vite's HMR websocket
    */
-  console.log('Setting up WebSocket server on path: /ws');
+  logger.info('Setting up WebSocket server on path: /ws');
   const wss = new WebSocketServer({ 
     server: httpServer, 
     path: '/ws',
@@ -577,16 +580,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const isOriginAllowed = validateOrigin(origin);
       
       if (!isOriginAllowed) {
-        console.warn(`WebSocket connection rejected. Invalid origin: ${origin}`);
+        logger.warn(`WebSocket connection rejected. Invalid origin: ${origin}`);
         return callback(false, 403, 'Origin not allowed');
       }
       
-      console.log(`WebSocket connection accepted from origin: ${origin || 'No Origin'}`);
+      logger.info(`WebSocket connection accepted from origin: ${origin || 'No Origin'}`);
       return callback(true);
     }
   });
   
-  console.log('WebSocket server initialized');
+  logger.info('WebSocket server initialized');
   
   /**
    * Validates if a connection origin is allowed
@@ -603,7 +606,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check against allowed origins patterns
       return ALLOWED_ORIGINS.some(pattern => pattern.test(origin));
     } catch (error) {
-      console.error('Origin validation error:', error);
+      logger.error('Origin validation error:', error);
       return false;
     }
   }
@@ -614,11 +617,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
    */
   wss.on('connection', (ws, req) => {
     const clientIp = req.socket.remoteAddress || 'unknown';
-    console.log(`WebSocket client connected from ${clientIp}`);
+    logger.info(`WebSocket client connected from ${clientIp}`);
     
     // Set a connection timeout to clean up idle/zombie connections
     const connectionTimeout = setTimeout(() => {
-      console.log('WebSocket connection timeout - closing inactive socket');
+      logger.info('WebSocket connection timeout - closing inactive socket');
       ws.terminate();
     }, 30 * 60 * 1000); // 30 minute timeout
     
@@ -648,7 +651,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           throw new Error('Invalid message format');
         }
         
-        console.log('Received message type:', parsedMessage.type);
+        logger.debug('Received message type:', parsedMessage.type);
         
         // Simple ping-pong functionality for connection testing
         if (parsedMessage.type === 'ping') {
@@ -662,7 +665,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           clearTimeout(connectionTimeout);
         }
       } catch (error) {
-        console.error('Error processing WebSocket message:', error);
+        logger.error('Error processing WebSocket message:', error);
         
         // Send error response to client
         try {
@@ -672,7 +675,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             timestamp: Date.now()
           }));
         } catch (sendError) {
-          console.error('Failed to send error response:', sendError);
+          logger.error('Failed to send error response:', sendError);
         }
       }
     });
@@ -682,13 +685,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
      * Cleans up resources when clients disconnect
      */
     ws.on('close', (code, reason) => {
-      console.log(`WebSocket client disconnected. Code: ${code}, Reason: ${reason || 'No reason provided'}`);
+      logger.info(`WebSocket client disconnected. Code: ${code}, Reason: ${reason || 'No reason provided'}`);
       clearTimeout(connectionTimeout);
     });
     
     // Handle connection errors
     ws.on('error', (err) => {
-      console.error('WebSocket connection error:', err);
+      logger.error('WebSocket connection error:', err);
       clearTimeout(connectionTimeout);
     });
   });
@@ -715,7 +718,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           client.send(JSON.stringify(stats));
         } catch (error) {
-          console.error('Error sending stats to client:', error);
+          logger.error('Error sending stats to client:', error);
         }
       }
     });

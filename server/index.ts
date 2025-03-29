@@ -2,6 +2,10 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { ZodError } from "zod";
+import { appConfig, createLogger } from "./utils/config";
+
+// Create a logger for the main application
+const logger = createLogger('server');
 
 const app = express();
 app.use(express.json());
@@ -82,10 +86,10 @@ app.use((req, res, next) => {
     // Log the structured error
     if (isExpectedError) {
       // Expected errors (4xx) - less verbose logging
-      console.warn(`API Error: ${JSON.stringify(errorLog)}`);
+      logger.warn(`API Error: ${JSON.stringify(errorLog)}`);
     } else {
       // Unexpected errors (5xx) - full error logging
-      console.error(`Server Error: ${JSON.stringify(errorLog)}`);
+      logger.error(`Server Error: ${JSON.stringify(errorLog)}`);
     }
 
     // Send appropriate response to client
@@ -119,6 +123,7 @@ app.use((req, res, next) => {
     host: "0.0.0.0",
     reusePort: true,
   }, () => {
-    log(`serving on port ${port}`);
+    logger.info(`Server started and listening on port ${port}`);
+    log(`serving on port ${port}`); // Keep original log for consistency
   });
 })();
