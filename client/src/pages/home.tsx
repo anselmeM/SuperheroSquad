@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, memo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -27,8 +27,8 @@ export default function Home() {
     },
   });
 
-  const { compareList } = useCompare();
-  console.log('Home component - compareList length:', compareList.length);
+  // Use compareCount instead of the full list for efficiency
+  const { compareCount } = useCompare();
   
   // Load search params from URL on first render
   useEffect(() => {
@@ -141,21 +141,26 @@ export default function Home() {
   });
 
   // Compare button to be displayed next to Favorites
-  const CompareButton = () => {
-    console.log('Rendering CompareButton - compareList length:', compareList.length);
+  // Memo the component to prevent re-renders when other state changes
+  const CompareButton = memo(() => {
+    // Using compareCount instead of the full list for better performance
+    // No console.log to improve performance
     
     return (
       <Link href="/compare">
         <Button 
-          variant={compareList.length > 0 ? "default" : "outline"}
-          className={`animate-in fade-in duration-300 ${compareList.length === 0 ? 'opacity-50' : ''}`}
+          variant={compareCount > 0 ? "default" : "outline"}
+          className={`animate-in fade-in duration-300 ${compareCount === 0 ? 'opacity-50' : ''}`}
         >
           <BarChart2 className="mr-2 h-4 w-4" />
-          Compare {compareList.length > 0 ? `(${compareList.length})` : ''}
+          Compare {compareCount > 0 ? `(${compareCount})` : ''}
         </Button>
       </Link>
     );
-  };
+  });
+  
+  // Add display name for debugging
+  CompareButton.displayName = 'CompareButton';
 
   return (
     <div className="min-h-screen bg-background relative">

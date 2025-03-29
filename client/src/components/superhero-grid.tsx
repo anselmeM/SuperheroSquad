@@ -1,10 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, memo, useCallback } from "react";
 import { SuperheroCard } from "@/components/superhero-card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, X, SlidersHorizontal } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { type Superhero } from "@shared/schema";
 import { useFavorites } from "@/hooks/use-favorites";
 import { useCompare } from "@/hooks/use-compare";
@@ -41,21 +39,18 @@ export function SuperheroGrid({ heroes, isLoading, error, searchParams, itemsPer
     // Listen for localStorage changes related to compare list
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'superhero-compare') {
-        console.log('Detected compare list change in localStorage');
+        // Set longer interval for check only when needed
         forceUpdate({});
       }
     };
     
     window.addEventListener('storage', handleStorageChange);
     
-    // Check every second for changes to ensure UI stays in sync
-    const interval = setInterval(() => {
-      forceUpdate({});
-    }, 1000);
+    // Remove the interval check as it's not needed with our optimized implementation
+    // and was causing constant re-renders
     
     return () => {
       window.removeEventListener('storage', handleStorageChange);
-      clearInterval(interval);
     };
   }, []);
   
@@ -162,26 +157,52 @@ export function SuperheroGrid({ heroes, isLoading, error, searchParams, itemsPer
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // Create a memoized hero card component that only re-renders when its props change
+  const MemoizedHeroCard = memo(({ hero, isCompared, isFav }: { 
+    hero: Superhero; 
+    isCompared: boolean; 
+    isFav: boolean;
+  }) => {
+    // Memoize callback functions
+    const handleToggleFavorite = useCallback(() => {
+      return isFav ? removeFavorite(hero.id) : addFavorite(hero);
+    }, [hero.id, isFav]);
+    
+    const handleToggleCompare = useCallback(() => {
+      return handleCompareToggle(hero);
+    }, [hero.id, hero.name]);
+    
+    return (
+      <SuperheroCard 
+        key={hero.id}
+        hero={hero}
+        isFavorite={isFav}
+        onToggleFavorite={handleToggleFavorite}
+        isInCompare={isCompared}
+        onToggleCompare={handleToggleCompare}
+      />
+    );
+  });
+  
+  // Display name for debugging
+  MemoizedHeroCard.displayName = 'MemoizedHeroCard';
+  
   return (
     <div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {visibleHeroes.map((hero) => {
           const isCompared = isInCompare(hero.id);
-          console.log(`Rendering hero ${hero.name}, isInCompare:`, isCompared);
-
+          const isFav = isFavorite(hero.id);
+          
+          // Remove console.log in production
+          // console.log(`Rendering hero ${hero.name}, isInCompare:`, isCompared);
+          
           return (
-            <SuperheroCard 
-              // Use a key that includes the compare state to force re-render when it changes
-              key={`${hero.id}-${isCompared ? 'compared' : 'not-compared'}`} 
+            <MemoizedHeroCard 
+              key={hero.id}
               hero={hero}
-              isFavorite={isFavorite(hero.id)}
-              onToggleFavorite={() => 
-                isFavorite(hero.id) 
-                  ? removeFavorite(hero.id)
-                  : addFavorite(hero)
-              }
-              isInCompare={isCompared}
-              onToggleCompare={() => handleCompareToggle(hero)}
+              isCompared={isCompared}
+              isFav={isFav}
             />
           );
         })}
