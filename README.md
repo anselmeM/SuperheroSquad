@@ -76,12 +76,20 @@ A dynamic web application for superhero enthusiasts to search, filter, and compa
    npm install
    ```
 
-3. Start the development server
+3. Set up environment variables
+   ```bash
+   # Create a .env file in the root directory
+   echo "SUPERHERO_API_TOKEN=your_api_token_here" > .env
+   ```
+   
+   > **Note:** You must obtain an API token from [Superhero API](https://superheroapi.com/) to use this application. The application will not start without a valid API token.
+
+4. Start the development server
    ```bash
    npm run dev
    ```
 
-4. Open your browser and navigate to `http://localhost:5000`
+5. Open your browser and navigate to `http://localhost:5000`
 
 ## 🔌 API
 
