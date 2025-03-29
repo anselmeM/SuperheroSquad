@@ -21,6 +21,9 @@ import { heroCache, searchCache, CacheFactory, CacheService } from "./cache";
 import { WebSocketServer, WebSocket } from "ws";
 import { URL } from "url";
 
+// Make sure WebSocket.OPEN is defined (fixing potential issues with type imports)
+const WS_OPEN = WebSocket.OPEN;
+
 // API configuration
 const API_TOKEN = process.env.SUPERHERO_API_TOKEN;
 if (!API_TOKEN) {
@@ -564,6 +567,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
    * Uses the same HTTP server as the REST API but with a different path
    * NOTE: We use '/ws' path to avoid conflicts with Vite's HMR websocket
    */
+  console.log('Setting up WebSocket server on path: /ws');
   const wss = new WebSocketServer({ 
     server: httpServer, 
     path: '/ws',
@@ -577,9 +581,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return callback(false, 403, 'Origin not allowed');
       }
       
+      console.log(`WebSocket connection accepted from origin: ${origin || 'No Origin'}`);
       return callback(true);
     }
   });
+  
+  console.log('WebSocket server initialized');
   
   /**
    * Validates if a connection origin is allowed
@@ -703,8 +710,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     // Broadcast to all connected clients that are ready to receive messages
     wss.clients.forEach((client) => {
-      if (client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify(stats));
+      // Use WS_OPEN constant instead of WebSocket.OPEN to prevent type issues
+      if (client.readyState === WS_OPEN) {
+        try {
+          client.send(JSON.stringify(stats));
+        } catch (error) {
+          console.error('Error sending stats to client:', error);
+        }
       }
     });
   }, 60 * 1000); // Every minute
