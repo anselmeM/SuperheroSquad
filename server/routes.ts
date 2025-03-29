@@ -303,6 +303,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+   * GET /api/test-error/:type
+   * 
+   * Test endpoint that triggers different types of errors
+   * Used to demonstrate the enhanced error handler functionality
+   * 
+   * @param type The type of error to simulate (client, server, validation, api)
+   * @returns Always throws an error of the specified type
+   */
+  app.get("/api/test-error/:type", (req, res, next) => {
+    const { type } = req.params;
+    
+    try {
+      switch (type) {
+        case 'client':
+          // 400 Bad Request - Simulate a client error
+          const clientError = new Error("Invalid client request parameters");
+          (clientError as any).status = 400;
+          throw clientError;
+          
+        case 'server':
+          // 500 Internal Server Error - Simulate a server error
+          throw new Error("Simulated server error with stack trace");
+          
+        case 'validation':
+          // Simulate a Zod validation error
+          throw new ZodError([{
+            code: "invalid_type",
+            expected: "string",
+            received: "number", 
+            path: ["name"],
+            message: "Expected string, received number"
+          }]);
+          
+        case 'api':
+          // Simulate an API response error
+          const apiError = new Error("Superhero API error");
+          (apiError as any).response = {
+            error: "character with given name not found",
+            response: "error"
+          };
+          (apiError as any).status = 404;
+          throw apiError;
+          
+        default:
+          // Generic error
+          throw new Error("Unknown error type");
+      }
+    } catch (error) {
+      // Pass error to the global error handler
+      next(error);
+    }
+  });
+
   // Start the cache cleanup schedule
   scheduleCacheCleanup();
 
