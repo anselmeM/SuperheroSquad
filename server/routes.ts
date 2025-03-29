@@ -30,13 +30,23 @@ const API_BASE_URL = "https://superheroapi.com/api.php";
 
 // Allowed WebSocket origins (these are validated on connection)
 const ALLOWED_ORIGINS = [
-  // Allow connections from the same server
+  // Allow connections from the same server (development)
   /^https?:\/\/localhost(:\d+)?$/,
   /^https?:\/\/127\.0\.0\.1(:\d+)?$/,
-  // Allow Replit domains
-  /^https?:\/\/.*\.replit\.app$/,
-  /^https?:\/\/.*\.repl\.co$/,
-  /^https?:\/\/.*\.picard\.replit\.dev$/
+  
+  // Allow specific Replit domains (more secure patterns)
+  // Matches URLs like https://<deployment-id>.replit.app
+  /^https?:\/\/[a-zA-Z0-9-]+\.replit\.app$/,
+  
+  // Matches URLs like https://<repl-slug>.<username>.repl.co
+  /^https?:\/\/[a-zA-Z0-9-]+\.[a-zA-Z0-9-]+\.repl\.co$/,
+  
+  // Match Picard development URLs (Replit internal)
+  /^https?:\/\/[a-zA-Z0-9-]+\.picard\.replit\.dev$/,
+  
+  // Match more specific deployment patterns
+  // Example: <random-id>-<slug>-<username>.replit.app
+  /^https?:\/\/[a-zA-Z0-9-]+-[a-zA-Z0-9-]+-[a-zA-Z0-9-]+\.replit\.app$/
 ];
 
 /**
