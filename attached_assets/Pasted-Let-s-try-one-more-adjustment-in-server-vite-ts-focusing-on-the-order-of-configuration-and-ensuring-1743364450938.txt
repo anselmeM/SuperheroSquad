@@ -1,0 +1,105 @@
+Let's try one more adjustment in server/vite.ts, focusing on the order of configuration and ensuring the host is also explicitly set within the HMR options:
+
+Ensure Correct Spread Order: Make sure ...viteConfig is spread before the explicit server options when calling createViteServer.
+Set host in HMR: Explicitly set host: '0.0.0.0' within the hmr object as well.
+TypeScript
+
+// server/vite.ts
+import express, { type Express } from "express";
+import fs from "fs";
+import path, { dirname } from "path";
+import { fileURLToPath } from "url";
+import { createServer as createViteServer, createLogger } from "vite";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+import { type Server } from "http";
+import viteConfig from "../vite.config"; // Base config
+import { nanoid } from "nanoid";
+
+const viteLogger = createLogger();
+
+export function log(message: string, source = "express") {
+  // ... (log function remains the same)
+}
+
+export async function setupVite(app: Express, httpServer: Server) {
+
+  // Define server options explicitly
+  const serverOptions = {
+    host: '0.0.0.0', // For the main server binding
+    port: 5000,      // For the main server binding
+    middlewareMode: true,
+    hmr: {
+      server: httpServer, // The http server instance
+      host: '0.0.0.0',    // Explicitly bind HMR websocket server to all interfaces
+      port: 5000,         // Internal HMR listener port
+      clientPort: 443,    // External port client connects to (Replit HTTPS)
+      protocol: 'wss',    // External protocol client uses (Replit HTTPS)
+    },
+  };
+
+  const vite = await createViteServer({
+    // Spread base config from vite.config.ts first
+    ...viteConfig,
+    // Ensure configFile is false so it doesn't reload and overwrite server options
+    configFile: false,
+    // Apply the explicit server/HMR options defined above
+    server: serverOptions,
+    // Override customLogger here if needed (or keep as is)
+    customLogger: {
+      ...viteLogger,
+      error: (msg, options) => {
+        viteLogger.error(msg, options);
+        process.exit(1);
+      },
+    },
+    appType: "custom",
+  });
+
+  app.use(vite.middlewares);
+
+  // ... rest of the setupVite function remains the same ...
+  app.use("*", async (req, res, next) => {
+    const url = req.originalUrl;
+    try {
+      const clientTemplate = path.resolve(__dirname, "..", "client", "index.html");
+      let template = await fs.promises.readFile(clientTemplate, "utf-8");
+      template = template.replace(
+        `src="/src/main.tsx"`,
+        `src="/src/main.tsx?v=${nanoid()}"`,
+      );
+      const page = await vite.transformIndexHtml(url, template);
+      res.status(200).set({ "Content-Type": "text/html" }).end(page);
+    } catch (e) {
+      if (e instanceof Error) { // Type guard
+        vite.ssrFixStacktrace(e);
+      }
+      next(e);
+    }
+  });
+}
+
+// ... (serveStatic function remains the same) ...
+export function serveStatic(app: Express) {
+  const distPath = path.resolve(__dirname, "..", "dist", "public"); // Corrected path relative to server/vite.ts
+
+  if (!fs.existsSync(distPath)) {
+    // Adjusted path in error message
+    throw new Error(
+      `Could not find the build directory: ${path.resolve(__dirname, "..", "dist", "public")}, make sure to build the client first using 'npm run build'`
+    );
+  }
+
+  app.use(express.static(distPath));
+
+  // fall through to index.html if the file doesn't exist
+  app.use("*", (_req, res) => {
+    // Adjusted path for sending index.html
+    res.sendFile(path.resolve(distPath, "index.html"));
+  });
+}
+Key Changes in this Version:
+
+Spread Order: ...viteConfig is now definitively placed before the server: serverOptions line in the createViteServer call. This ensures our explicit serverOptions take precedence.
+hmr.host: '0.0.0.0': Added this line within the hmr configuration block. This explicitly tells the HMR WebSocket server component to listen on all available network interfaces within the container, matching the main server's host setting.
+Please replace the contents of SuperheroSquad/server/vite.ts with this code and restart the development server again. This covers the most common configuration overrides needed for HMR in proxied environments. If this still doesn't work, the issue might be deeper within the Replit+Vite interaction or potentially related to the eruda.js script seen in the stack trace, although that's less probable.
