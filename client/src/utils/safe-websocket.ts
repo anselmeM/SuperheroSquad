@@ -1,247 +1,375 @@
 /**
- * Safe WebSocket implementation that prevents unhandled promise rejections
- * and provides better error handling
+ * SafeWebSocket
+ * 
+ * A more resilient WebSocket wrapper that properly handles connection errors,
+ * provides reconnection logic, and exposes a more robust event-based API.
+ * 
+ * Features:
+ * - Automatic reconnection with configurable backoff
+ * - Event-based interface with typed events
+ * - Error handling that prevents unhandled rejections
+ * - Connection state tracking
+ * - Timeouts for connection attempts
  */
 import { createLogger } from './config';
 
-const logger = createLogger('websocket');
+const logger = createLogger('safe-websocket');
 
-type MessageHandler = (data: any) => void;
-type ErrorHandler = (error: Event | Error) => void;
-type ConnectionHandler = () => void;
+export type WebSocketStatus = 'connecting' | 'open' | 'closing' | 'closed' | 'error';
+export type MessageHandler = (data: any) => void;
+export type StatusHandler = (status: WebSocketStatus) => void;
+export type ErrorHandler = (error: Error) => void;
 
 interface WebSocketOptions {
-  maxReconnectAttempts?: number;
-  reconnectDelay?: number;
+  /** Whether to automatically reconnect on disconnection */
   autoReconnect?: boolean;
+  /** Initial reconnection delay in milliseconds */
+  reconnectDelay?: number;
+  /** Maximum reconnection delay in milliseconds */
+  maxReconnectDelay?: number;
+  /** Backoff multiplier for reconnection delay */
+  reconnectBackoff?: number;
+  /** Connection timeout in milliseconds */
+  connectionTimeout?: number;
+  /** Maximum number of reconnection attempts (0 = infinite) */
+  maxReconnectAttempts?: number;
+  /** Debug mode */
+  debug?: boolean;
 }
 
 /**
- * A reliable WebSocket wrapper with built-in reconnection logic
+ * Enhanced WebSocket class that provides automatic reconnection,
+ * better error handling, and a more robust API.
  */
 export class SafeWebSocket {
-  private socket: WebSocket | null = null;
   private url: string;
-  private messageHandlers: Set<MessageHandler> = new Set();
-  private errorHandlers: Set<ErrorHandler> = new Set();
-  private connectHandlers: Set<ConnectionHandler> = new Set();
+  private protocols?: string | string[];
+  private socket: WebSocket | null = null;
+  private messageHandlers: MessageHandler[] = [];
+  private statusHandlers: StatusHandler[] = [];
+  private errorHandlers: ErrorHandler[] = [];
+  private connectionTimeoutId: number | null = null;
+  private reconnectTimeoutId: number | null = null;
   private reconnectAttempts = 0;
-  private isConnecting = false;
-  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-  private shouldReconnect = false;
   
-  private maxReconnectAttempts: number;
-  private reconnectDelay: number;
+  // Default options
+  private options: Required<WebSocketOptions> = {
+    autoReconnect: true,
+    reconnectDelay: 1000,
+    maxReconnectDelay: 30000,
+    reconnectBackoff: 1.5,
+    connectionTimeout: 10000,
+    maxReconnectAttempts: 10,
+    debug: false
+  };
+  
+  // Current WebSocket status
+  private _status: WebSocketStatus = 'closed';
   
   /**
    * Creates a new SafeWebSocket instance
    * 
-   * @param url The WebSocket URL to connect to
+   * @param url WebSocket URL to connect to
+   * @param protocols WebSocket protocols to use
    * @param options Configuration options
    */
-  constructor(url: string, options: WebSocketOptions = {}) {
+  constructor(
+    url: string,
+    protocols?: string | string[],
+    options?: WebSocketOptions
+  ) {
     this.url = url;
-    this.maxReconnectAttempts = options.maxReconnectAttempts || 5;
-    this.reconnectDelay = options.reconnectDelay || 1000; // 1 second
-    this.shouldReconnect = options.autoReconnect !== false;
+    this.protocols = protocols;
     
-    // Don't auto-connect in constructor to prevent unhandled rejections
-    // Call connect() explicitly
+    // Merge user options with defaults
+    if (options) {
+      this.options = { ...this.options, ...options };
+    }
+    
+    // Don't connect automatically - let the caller decide when to connect
   }
   
   /**
-   * Establishes the WebSocket connection
-   * 
-   * @returns A promise that resolves when the connection is established
+   * Get the current connection status
    */
-  async connect(): Promise<boolean> {
-    // Prevent multiple connections
-    if (this.isConnecting) {
+  get status(): WebSocketStatus {
+    return this._status;
+  }
+  
+  /**
+   * Update connection status and notify handlers
+   */
+  private setStatus(status: WebSocketStatus): void {
+    if (this._status !== status) {
+      this._status = status;
+      this.notifyStatusHandlers(status);
+    }
+  }
+  
+  /**
+   * Connect to the WebSocket server
+   * @returns Promise that resolves when connected
+   */
+  connect(): Promise<void> {
+    if (this.socket && (this.socket.readyState === WebSocket.CONNECTING || 
+                         this.socket.readyState === WebSocket.OPEN)) {
+      // Already connecting or connected
+      return Promise.resolve();
+    }
+    
+    // Clear any previous reconnection timers
+    this.clearReconnectTimeout();
+    
+    return new Promise<void>((resolve, reject) => {
+      try {
+        this.setStatus('connecting');
+        
+        // Create new WebSocket connection
+        this.socket = new WebSocket(this.url, this.protocols);
+        
+        // Set up connection timeout
+        this.connectionTimeoutId = window.setTimeout(() => {
+          if (this.socket?.readyState !== WebSocket.OPEN) {
+            const error = new Error(`WebSocket connection timeout after ${this.options.connectionTimeout}ms`);
+            this.handleError(error);
+            reject(error);
+            
+            // Force close the socket
+            this.close();
+            
+            // Attempt to reconnect if enabled
+            this.scheduleReconnect();
+          }
+        }, this.options.connectionTimeout);
+        
+        // Connection opened
+        this.socket.onopen = () => {
+          this.clearConnectionTimeout();
+          this.reconnectAttempts = 0;
+          this.setStatus('open');
+          logger.info(`Connected to ${this.url}`);
+          resolve();
+        };
+        
+        // Connection closed
+        this.socket.onclose = (event) => {
+          this.clearConnectionTimeout();
+          this.setStatus('closed');
+          logger.info(`Disconnected from ${this.url}, code: ${event.code}, reason: ${event.reason}`);
+          
+          // Attempt to reconnect if enabled
+          this.scheduleReconnect();
+        };
+        
+        // Connection error
+        this.socket.onerror = (event) => {
+          this.clearConnectionTimeout();
+          
+          const error = new Error(`WebSocket error: ${event.type}`);
+          this.handleError(error);
+          
+          if (this._status === 'connecting') {
+            // Only reject the promise if we're still connecting
+            reject(error);
+          }
+        };
+        
+        // Handle incoming messages
+        this.socket.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            this.notifyMessageHandlers(data);
+          } catch (error) {
+            // Not JSON or other parsing error
+            logger.warn('Failed to parse WebSocket message:', error);
+            this.notifyMessageHandlers(event.data);
+          }
+        };
+      } catch (error) {
+        this.setStatus('error');
+        this.handleError(error as Error);
+        reject(error);
+        
+        // Attempt to reconnect if enabled
+        this.scheduleReconnect();
+      }
+    });
+  }
+  
+  /**
+   * Close the WebSocket connection
+   * @param code Close code
+   * @param reason Close reason
+   */
+  close(code?: number, reason?: string): void {
+    this.clearConnectionTimeout();
+    this.clearReconnectTimeout();
+    
+    if (this.socket) {
+      if (this.socket.readyState === WebSocket.OPEN ||
+          this.socket.readyState === WebSocket.CONNECTING) {
+        try {
+          this.setStatus('closing');
+          this.socket.close(code, reason);
+        } catch (error) {
+          logger.error('Error closing WebSocket:', error);
+        }
+      }
+      
+      // Clean up event handlers
+      this.socket.onopen = null;
+      this.socket.onclose = null;
+      this.socket.onerror = null;
+      this.socket.onmessage = null;
+      
+      this.socket = null;
+    }
+  }
+  
+  /**
+   * Send data through the WebSocket
+   * @param data Data to send (will be JSON.stringified)
+   * @returns true if sent successfully, false otherwise
+   */
+  send(data: any): boolean {
+    if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+      logger.warn('Cannot send data - socket not open');
       return false;
     }
-    
-    if (this.socket?.readyState === WebSocket.OPEN) {
-      return true;
-    }
-    
-    this.isConnecting = true;
     
     try {
-      // Create a new WebSocket connection
-      logger.debug(`Connecting to WebSocket at ${this.url}`);
-      
-      return new Promise<boolean>((resolve, reject) => {
-        try {
-          this.socket = new WebSocket(this.url);
-          
-          // Handle the connection established event
-          this.socket.onopen = () => {
-            logger.debug('WebSocket connection established');
-            this.isConnecting = false;
-            this.reconnectAttempts = 0;
-            this.notifyConnectHandlers();
-            resolve(true);
-          };
-          
-          // Handle incoming messages
-          this.socket.onmessage = (event) => {
-            try {
-              const data = JSON.parse(event.data);
-              this.notifyMessageHandlers(data);
-            } catch (error) {
-              logger.error('Error parsing WebSocket message:', error);
-            }
-          };
-          
-          // Handle connection errors
-          this.socket.onerror = (event) => {
-            logger.error('WebSocket error:', event);
-            this.notifyErrorHandlers(event);
-            // Don't resolve or reject here, let onclose handle it
-          };
-          
-          // Handle connection closure
-          this.socket.onclose = (event) => {
-            logger.debug(`WebSocket closed: code=${event.code}, clean=${event.wasClean}`);
-            this.socket = null;
-            this.isConnecting = false;
-            
-            // Try to reconnect if appropriate
-            if (this.shouldReconnect && !event.wasClean && this.reconnectAttempts < this.maxReconnectAttempts) {
-              this.scheduleReconnect();
-              // Resolve with false to indicate connection was lost but reconnect scheduled
-              resolve(false);
-            } else {
-              // Connection closed without reconnect
-              reject(new Error(`WebSocket connection closed: ${event.code}`));
-            }
-          };
-          
-          // Handle initial timeout
-          setTimeout(() => {
-            if (this.socket?.readyState !== WebSocket.OPEN) {
-              logger.warn('WebSocket connection timed out');
-              this.notifyErrorHandlers(new Error('Connection timed out'));
-              // Let onclose handle the cleanup
-            }
-          }, 10000); // 10 second timeout
-        } catch (error) {
-          logger.error('Error creating WebSocket:', error);
-          this.isConnecting = false;
-          this.notifyErrorHandlers(error as Error);
-          reject(error);
-        }
-      });
+      const message = typeof data === 'string' ? data : JSON.stringify(data);
+      this.socket.send(message);
+      return true;
     } catch (error) {
-      logger.error('Error in connect method:', error);
-      this.isConnecting = false;
+      this.handleError(error as Error);
       return false;
     }
   }
   
   /**
-   * Schedules a reconnection attempt
+   * Add handler for incoming messages
+   * @param handler Function to call with message data
+   * @returns this instance for chaining
    */
-  private scheduleReconnect() {
-    this.reconnectAttempts++;
-    const delay = this.reconnectDelay * Math.pow(1.5, this.reconnectAttempts - 1);
-    
-    logger.debug(`Scheduling reconnection in ${delay}ms (attempt ${this.reconnectAttempts})`);
-    
-    if (this.reconnectTimer) {
-      clearTimeout(this.reconnectTimer);
+  onMessage(handler: MessageHandler): SafeWebSocket {
+    this.messageHandlers.push(handler);
+    return this;
+  }
+  
+  /**
+   * Add handler for connection status changes
+   * @param handler Function to call with new status
+   * @returns this instance for chaining
+   */
+  onStatus(handler: StatusHandler): SafeWebSocket {
+    this.statusHandlers.push(handler);
+    // Immediately notify with current status
+    handler(this._status);
+    return this;
+  }
+  
+  /**
+   * Add handler for connection errors
+   * @param handler Function to call with error
+   * @returns this instance for chaining
+   */
+  onError(handler: ErrorHandler): SafeWebSocket {
+    this.errorHandlers.push(handler);
+    return this;
+  }
+  
+  /**
+   * Remove a message handler
+   * @param handler Handler to remove
+   */
+  offMessage(handler: MessageHandler): void {
+    this.messageHandlers = this.messageHandlers.filter(h => h !== handler);
+  }
+  
+  /**
+   * Remove a status handler
+   * @param handler Handler to remove
+   */
+  offStatus(handler: StatusHandler): void {
+    this.statusHandlers = this.statusHandlers.filter(h => h !== handler);
+  }
+  
+  /**
+   * Remove an error handler
+   * @param handler Handler to remove
+   */
+  offError(handler: ErrorHandler): void {
+    this.errorHandlers = this.errorHandlers.filter(h => h !== handler);
+  }
+  
+  /**
+   * Clear the connection timeout
+   */
+  private clearConnectionTimeout(): void {
+    if (this.connectionTimeoutId !== null) {
+      window.clearTimeout(this.connectionTimeoutId);
+      this.connectionTimeoutId = null;
+    }
+  }
+  
+  /**
+   * Clear the reconnection timeout
+   */
+  private clearReconnectTimeout(): void {
+    if (this.reconnectTimeoutId !== null) {
+      window.clearTimeout(this.reconnectTimeoutId);
+      this.reconnectTimeoutId = null;
+    }
+  }
+  
+  /**
+   * Schedule a reconnection attempt with backoff
+   */
+  private scheduleReconnect(): void {
+    if (!this.options.autoReconnect) {
+      return;
     }
     
-    this.reconnectTimer = setTimeout(() => {
-      logger.debug('Attempting to reconnect...');
+    // Check if we've exceeded the maximum number of attempts
+    if (this.options.maxReconnectAttempts > 0 && 
+        this.reconnectAttempts >= this.options.maxReconnectAttempts) {
+      logger.warn(`Maximum reconnection attempts (${this.options.maxReconnectAttempts}) reached`);
+      return;
+    }
+    
+    // Calculate backoff delay
+    const delay = Math.min(
+      this.options.reconnectDelay * Math.pow(this.options.reconnectBackoff, this.reconnectAttempts),
+      this.options.maxReconnectDelay
+    );
+    
+    logger.info(`Scheduling reconnection attempt in ${delay}ms (attempt ${this.reconnectAttempts + 1})`);
+    
+    this.clearReconnectTimeout();
+    this.reconnectTimeoutId = window.setTimeout(() => {
+      this.reconnectAttempts++;
       this.connect().catch(error => {
-        logger.error('Reconnection failed:', error);
+        logger.error(`Reconnection attempt ${this.reconnectAttempts} failed:`, error);
       });
     }, delay);
   }
   
   /**
-   * Sends a message through the WebSocket
-   * 
-   * @param data The data to send
-   * @returns True if the message was sent, false otherwise
+   * Handle a WebSocket error
+   * @param error Error object
    */
-  send(data: any): boolean {
-    try {
-      if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
-        logger.warn('Cannot send message: WebSocket not connected');
-        return false;
-      }
-      
-      const message = typeof data === 'string' ? data : JSON.stringify(data);
-      this.socket.send(message);
-      return true;
-    } catch (error) {
-      logger.error('Error sending WebSocket message:', error);
-      return false;
-    }
+  private handleError(error: Error): void {
+    this.setStatus('error');
+    logger.error('WebSocket error:', error);
+    this.notifyErrorHandlers(error);
   }
   
   /**
-   * Closes the WebSocket connection
+   * Notify all message handlers of a new message
+   * @param data Message data
    */
-  close() {
-    if (this.reconnectTimer) {
-      clearTimeout(this.reconnectTimer);
-      this.reconnectTimer = null;
-    }
-    
-    this.shouldReconnect = false;
-    
-    if (this.socket) {
-      try {
-        this.socket.close(1000, 'Closed by client');
-        this.socket = null;
-      } catch (error) {
-        logger.error('Error closing WebSocket:', error);
-      }
-    }
-  }
-  
-  /**
-   * Registers a handler for incoming messages
-   * 
-   * @param handler The message handler function
-   * @returns This instance for chaining
-   */
-  onMessage(handler: MessageHandler): SafeWebSocket {
-    this.messageHandlers.add(handler);
-    return this;
-  }
-  
-  /**
-   * Registers a handler for connection errors
-   * 
-   * @param handler The error handler function
-   * @returns This instance for chaining
-   */
-  onError(handler: ErrorHandler): SafeWebSocket {
-    this.errorHandlers.add(handler);
-    return this;
-  }
-  
-  /**
-   * Registers a handler for successful connections
-   * 
-   * @param handler The connection handler function
-   * @returns This instance for chaining
-   */
-  onConnect(handler: ConnectionHandler): SafeWebSocket {
-    this.connectHandlers.add(handler);
-    return this;
-  }
-  
-  /**
-   * Notifies all registered message handlers
-   * 
-   * @param data The message data
-   */
-  private notifyMessageHandlers(data: any) {
+  private notifyMessageHandlers(data: any): void {
     this.messageHandlers.forEach(handler => {
       try {
         handler(data);
@@ -252,39 +380,50 @@ export class SafeWebSocket {
   }
   
   /**
-   * Notifies all registered error handlers
-   * 
-   * @param error The error event or object
+   * Notify all status handlers of a status change
+   * @param status New status
    */
-  private notifyErrorHandlers(error: Event | Error) {
+  private notifyStatusHandlers(status: WebSocketStatus): void {
+    this.statusHandlers.forEach(handler => {
+      try {
+        handler(status);
+      } catch (error) {
+        logger.error('Error in status handler:', error);
+      }
+    });
+  }
+  
+  /**
+   * Notify all error handlers of an error
+   * @param error Error object
+   */
+  private notifyErrorHandlers(error: Error): void {
     this.errorHandlers.forEach(handler => {
       try {
         handler(error);
-      } catch (handlerError) {
-        logger.error('Error in error handler:', handlerError);
-      }
-    });
-  }
-  
-  /**
-   * Notifies all registered connection handlers
-   */
-  private notifyConnectHandlers() {
-    this.connectHandlers.forEach(handler => {
-      try {
-        handler();
       } catch (error) {
-        logger.error('Error in connect handler:', error);
+        logger.error('Error in error handler:', error);
       }
     });
   }
-  
-  /**
-   * Gets the current connection state
-   * 
-   * @returns True if the WebSocket is connected, false otherwise
-   */
-  isConnected(): boolean {
-    return this.socket !== null && this.socket.readyState === WebSocket.OPEN;
-  }
+}
+
+/**
+ * Create a safe WebSocket connection with proper URL construction
+ * for the current environment
+ * 
+ * @param path WebSocket path (e.g., '/ws')
+ * @param options Connection options
+ * @returns SafeWebSocket instance
+ */
+export function createSafeWebSocket(
+  path: string,
+  options?: WebSocketOptions
+): SafeWebSocket {
+  // Determine protocol (ws/wss) based on current page protocol
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  // Create URL using current host and provided path
+  const wsUrl = `${protocol}//${window.location.host}${path}`;
+  // Create and return the SafeWebSocket instance
+  return new SafeWebSocket(wsUrl, undefined, options);
 }

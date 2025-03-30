@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { createLogger } from '@/utils/config';
-import { SafeWebSocket } from '@/utils/safe-websocket';
+import { SafeWebSocket, createSafeWebSocket, WebSocketStatus } from '@/utils/safe-websocket';
 
 // Create a logger for the cache-stats module
 const logger = createLogger('cache-stats');
@@ -30,6 +30,7 @@ export function useCacheStats() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<WebSocketStatus>('closed');
 
   // Define refs outside useEffect to maintain state across renders
   const socketRef = useRef<SafeWebSocket | null>(null);
@@ -66,76 +67,85 @@ export function useCacheStats() {
     // Only connect to WebSocket if we're on a client (browser)
     if (typeof window === 'undefined') return;
     
-    // Determine WebSocket URL using window.location
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.host;
-    const wsUrl = `${protocol}//${host}/ws`;
+    logger.info('Setting up WebSocket connection for cache stats');
     
-    logger.info(`Initializing SafeWebSocket for cache stats: ${wsUrl}`);
-    
-    // Create the SafeWebSocket instance
-    socketRef.current = new SafeWebSocket(wsUrl, {
+    // Create the SafeWebSocket instance using our utility function
+    const socket = createSafeWebSocket('/ws', {
       maxReconnectAttempts: 5,
       reconnectDelay: 1000,
-      autoReconnect: true
+      autoReconnect: true,
+      debug: false
     });
     
-    // Register message handler
-    socketRef.current.onMessage((data) => {
-      try {
-        if (data.type === 'cache-stats') {
-          setStats(data);
-          setLastUpdated(data.timestamp || Date.now());
-        }
-      } catch (parseErr) {
-        logger.error('Error handling WebSocket message:', parseErr);
+    socketRef.current = socket;
+    
+    // Set up message handler
+    socket.onMessage((data) => {
+      if (data && data.type === 'cache-stats') {
+        logger.debug('Received cache stats update:', data);
+        setStats(data);
+        setLastUpdated(data.timestamp || Date.now());
+      } else if (data && data.type === 'pong') {
+        logger.debug('Received pong response');
       }
     });
     
-    // Register error handler
-    socketRef.current.onError((error) => {
+    // Set up status handler
+    socket.onStatus((status) => {
+      setConnectionStatus(status);
+      
+      if (status === 'open') {
+        logger.info('WebSocket connection established');
+        setError(null);
+        
+        // Request initial cache stats
+        socket.send({ type: 'get-stats' });
+      } else if (status === 'error' || status === 'closed') {
+        if (status === 'error') {
+          logger.warn('WebSocket connection error');
+          setError('Connection error. Stats may be outdated.');
+        } else {
+          logger.info('WebSocket connection closed');
+        }
+      }
+    });
+    
+    // Set up error handler
+    socket.onError((error) => {
       logger.error('WebSocket error:', error);
       setError('Connection error. Stats may be outdated.');
     });
     
-    // Register connection handler
-    socketRef.current.onConnect(() => {
-      logger.info('WebSocket connection established');
-      setError(null);
-      
-      // Send a ping message to verify connection
-      socketRef.current?.send({ 
-        type: 'ping', 
-        timestamp: Date.now() 
-      });
-    });
-    
     // Start the connection
-    socketRef.current.connect().catch(error => {
+    socket.connect().catch(error => {
       logger.error('Failed to connect WebSocket:', error);
       setError('Failed to establish real-time connection. Stats may be outdated.');
     });
     
     // Setup a heartbeat interval to detect dead connections
     heartbeatIntervalRef.current = setInterval(() => {
-      if (socketRef.current?.isConnected()) {
-        socketRef.current.send({ type: 'ping', timestamp: Date.now() });
+      // Only send heartbeat if connected
+      if (connectionStatus === 'open') {
+        logger.debug('Sending ping for heartbeat');
+        socket.send({ type: 'ping', timestamp: Date.now() });
       }
-    }, 30000);
+    }, 30000) as unknown as ReturnType<typeof setInterval>; // Cast for TypeScript compatibility
     
     // Cleanup on unmount
     return () => {
-      logger.debug('Cleaning up SafeWebSocket resources');
+      logger.debug('Cleaning up WebSocket resources');
       
       if (heartbeatIntervalRef.current) {
         clearInterval(heartbeatIntervalRef.current);
         heartbeatIntervalRef.current = null;
       }
       
-      if (socketRef.current) {
-        socketRef.current.close();
-        socketRef.current = null;
+      if (socket) {
+        // Remove all event handlers to prevent memory leaks
+        socket.close();
       }
+      
+      socketRef.current = null;
     };
   }, []);
   
@@ -143,6 +153,7 @@ export function useCacheStats() {
     stats, 
     loading, 
     error, 
-    lastUpdated 
+    lastUpdated,
+    connectionStatus
   };
 }

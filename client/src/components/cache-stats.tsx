@@ -3,15 +3,49 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertCircle, Database, Activity, Clock } from 'lucide-react';
+import { AlertCircle, Database, Activity, Clock, Wifi, WifiOff } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
+import { useState, useEffect } from 'react';
+import type { WebSocketStatus } from '@/utils/safe-websocket';
 
 /**
  * Component to display cache statistics with real-time updates
  */
 export function CacheStats() {
-  const { stats, loading, error, lastUpdated } = useCacheStats();
+  const { stats, loading, error, lastUpdated, connectionStatus } = useCacheStats();
+  const [statusText, setStatusText] = useState<string>('Disconnected');
+  const [statusVariant, setStatusVariant] = useState<'default' | 'secondary' | 'destructive' | 'outline'>('outline');
+  
+  // Update status text and variant when connection status changes
+  useEffect(() => {
+    switch (connectionStatus) {
+      case 'connecting':
+        setStatusText('Connecting...');
+        setStatusVariant('secondary');
+        break;
+      case 'open':
+        setStatusText('Connected');
+        setStatusVariant('default');
+        break;
+      case 'closing':
+        setStatusText('Closing...');
+        setStatusVariant('secondary');
+        break;
+      case 'closed':
+        setStatusText('Disconnected');
+        setStatusVariant('outline');
+        break;
+      case 'error':
+        setStatusText('Connection Error');
+        setStatusVariant('destructive');
+        break;
+      default:
+        setStatusText('Unknown');
+        setStatusVariant('outline');
+    }
+  }, [connectionStatus]);
   
   const defaultStats: CacheStatsType = {
     size: 0,
@@ -25,15 +59,22 @@ export function CacheStats() {
     return <CacheStatsSkeleton />;
   }
   
-  // If error, show error message
+  // If error, show error message with connection status
   if (error) {
     return (
-      <Alert variant="destructive" className="mb-4">
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          {error}
-        </AlertDescription>
-      </Alert>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold tracking-tight">Cache Statistics</h2>
+          <ConnectionStatus status={connectionStatus} />
+        </div>
+        
+        <Alert variant="destructive" className="mb-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            {error}
+          </AlertDescription>
+        </Alert>
+      </div>
     );
   }
   
@@ -41,12 +82,15 @@ export function CacheStats() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold tracking-tight">Cache Statistics</h2>
-        {lastUpdated && (
-          <div className="flex items-center text-sm text-muted-foreground">
-            <Clock className="mr-1 h-4 w-4" />
-            Updated {formatDistanceToNow(lastUpdated, { addSuffix: true })}
-          </div>
-        )}
+        <div className="flex items-center gap-4">
+          <ConnectionStatus status={connectionStatus} />
+          {lastUpdated && (
+            <div className="flex items-center text-sm text-muted-foreground">
+              <Clock className="mr-1 h-4 w-4" />
+              Updated {formatDistanceToNow(lastUpdated, { addSuffix: true })}
+            </div>
+          )}
+        </div>
       </div>
       
       <Tabs defaultValue="hero">
@@ -72,6 +116,50 @@ export function CacheStats() {
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+/**
+ * Displays the current WebSocket connection status
+ */
+function ConnectionStatus({ status }: { status: WebSocketStatus }) {
+  let statusIcon = <WifiOff className="h-4 w-4 mr-1" />;
+  let statusText = "Disconnected";
+  let variant: "default" | "secondary" | "destructive" | "outline" = "outline";
+  
+  switch (status) {
+    case 'connecting':
+      statusIcon = <Wifi className="h-4 w-4 mr-1 animate-pulse" />;
+      statusText = "Connecting...";
+      variant = "secondary";
+      break;
+    case 'open':
+      statusIcon = <Wifi className="h-4 w-4 mr-1" />;
+      statusText = "Connected";
+      variant = "default";
+      break;
+    case 'closing':
+      statusIcon = <Wifi className="h-4 w-4 mr-1 animate-pulse" />;
+      statusText = "Closing...";
+      variant = "secondary";
+      break;
+    case 'closed':
+      statusIcon = <WifiOff className="h-4 w-4 mr-1" />;
+      statusText = "Disconnected";
+      variant = "outline";
+      break;
+    case 'error':
+      statusIcon = <AlertCircle className="h-4 w-4 mr-1" />;
+      statusText = "Connection Error";
+      variant = "destructive";
+      break;
+  }
+  
+  return (
+    <Badge variant={variant} className="flex items-center">
+      {statusIcon}
+      {statusText}
+    </Badge>
   );
 }
 

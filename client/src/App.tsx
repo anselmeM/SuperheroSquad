@@ -17,30 +17,6 @@ import { createLogger } from "@/utils/config";
 
 const logger = createLogger('app');
 
-// Define a global error handler for WebSocket connections
-if (typeof window !== 'undefined') {
-  // Patch the WebSocket constructor to catch errors
-  const OriginalWebSocket = window.WebSocket;
-  
-  class SafeWebSocket extends OriginalWebSocket {
-    constructor(url: string | URL, protocols?: string | string[]) {
-      try {
-        super(url, protocols);
-        logger.debug(`SafeWebSocket: Connection created for ${String(url)}`);
-      } catch (error) {
-        logger.error('SafeWebSocket: Constructor error:', error);
-        // Don't rethrow to prevent unhandled rejections
-        throw error; // The error will be caught by our global handler
-      }
-    }
-  }
-  
-  // Replace global WebSocket with our safe version
-  window.WebSocket = SafeWebSocket as any;
-  
-  logger.info('SafeWebSocket: WebSocket constructor patched');
-}
-
 function Router() {
   return (
     <Switch>
