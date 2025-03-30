@@ -1,4 +1,5 @@
 import { Switch, Route } from "wouter";
+import { useEffect } from "react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -30,6 +31,31 @@ function Router() {
 }
 
 function App() {
+  // Setup global error handler for unhandled promise rejections
+  useEffect(() => {
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      // Prevent the default browser behavior which logs the error
+      event.preventDefault();
+      
+      // Log the error using our structured logger
+      logger.error(
+        'Unhandled Promise Rejection:',
+        event.reason instanceof Error ? event.reason : new Error(String(event.reason))
+      );
+      
+      // Return true to indicate we've handled the event
+      return true;
+    };
+    
+    // Add global event listener for unhandled promise rejections
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+    
+    // Cleanup listener on component unmount
+    return () => {
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+    };
+  }, []);
+  
   const handleReset = () => {
     logger.info('Global error boundary reset triggered');
     // Clear query cache on global error reset
