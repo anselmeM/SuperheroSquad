@@ -40,22 +40,39 @@ export function setupViteHmrInterceptor() {
     // 3. Monitor network requests to intercept Vite's WebSocket connections
     const originalWebSocket = window.WebSocket;
     window.WebSocket = function(url: string | URL, protocols?: string | string[]) {
-      // Convert URL object to string for inspection
-      const urlStr = url.toString();
-
-      // Check if this is a Vite HMR WebSocket connection with issues
-      if (urlStr.includes('vite') && urlStr.includes('localhost:undefined')) {
-        logger.warn('Intercepted problematic Vite HMR WebSocket URL:', urlStr);
+      try {
+        // Convert URL object to string for inspection
+        const urlStr = url.toString();
         
-        // Create correct URL using current location
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const host = window.location.host;
-        const fixedUrl = `${protocol}//${host}${new URL(urlStr).pathname}`;
-        
-        logger.info('Redirecting Vite HMR WebSocket to:', fixedUrl);
-        
-        // Call the original WebSocket with fixed URL
-        return new originalWebSocket(fixedUrl, protocols);
+        // Check for invalid WebSocket URLs that may cause errors
+        if (urlStr.includes('undefined') || !urlStr.match(/^(ws|wss):\/\//)) {
+          logger.warn('Intercepted invalid WebSocket URL:', urlStr);
+          
+          // Create correct URL using current location
+          const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+          const host = window.location.host;
+          
+          // Try to extract path from the URL if possible
+          let path = '/';
+          try {
+            const parsedUrl = new URL(urlStr);
+            path = parsedUrl.pathname + parsedUrl.search;
+          } catch (e) {
+            // If URL parsing fails, try to extract path portion
+            const pathMatch = urlStr.match(/\/([^?]*\??.*)/);
+            if (pathMatch) {
+              path = pathMatch[0];
+            }
+          }
+          
+          const fixedUrl = `${protocol}//${host}${path}`;
+          logger.info('Redirecting WebSocket to:', fixedUrl);
+          
+          // Call the original WebSocket with fixed URL
+          return new originalWebSocket(fixedUrl, protocols);
+        }
+      } catch (error) {
+        logger.error('Error in WebSocket constructor interception:', error);
       }
       
       // Pass through normal WebSocket connections
