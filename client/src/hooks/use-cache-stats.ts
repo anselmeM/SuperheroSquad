@@ -73,11 +73,12 @@ export function useCacheStats() {
     
     // Determine WebSocket URL, handling various development and production environments
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    // For development/testing environments, be more flexible with WebSocket connections
-    const wsUrl = `${protocol}//${window.location.host}/ws`;
+    // Use the current host for connection to avoid localhost/undefined issues
+    const host = window.location.host;
+    const wsUrl = `${protocol}//${host}/ws`;
     
     logger.info(`Initializing WebSocket connection handler for: ${wsUrl}`);
-    logger.debug(`Current origin: ${window.location.origin}`);
+    logger.debug(`Current origin: ${window.location.origin}, host: ${host}`);
     
     // Function to calculate reconnect delay with exponential backoff
     const getReconnectDelay = () => {
