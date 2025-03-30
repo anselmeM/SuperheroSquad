@@ -1,18 +1,12 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { type Superhero } from '@shared/schema';
+import { createLogger } from '@/utils/config';
 
 const COMPARE_KEY = 'superhero-compare';
 const MAX_COMPARE = 3; // Maximum number of heroes to compare
 
-/**
- * Helper function for development-only logging
- * Only logs in development environment
- */
-const logDebug = (...args: any[]) => {
-  if (process.env.NODE_ENV === 'development' && false) { // Disabled by default
-    console.log('[Compare Hook]', ...args);
-  }
-};
+// Create a structured logger for the compare functionality
+const logger = createLogger('compare');
 
 /**
  * Helper function to parse stat values consistently
@@ -68,8 +62,8 @@ export function useCompare() {
       // Ensure each hero in the compare list has valid powerstats
       const validatedList = parsed.map(ensureValidSuperhero);
       return validatedList;
-    } catch {
-      console.error('Failed to load compare list from localStorage');
+    } catch (error) {
+      logger.error('Failed to load compare list from localStorage', error);
       return [];
     }
   });
@@ -84,22 +78,22 @@ export function useCompare() {
     try {
       localStorage.setItem(COMPARE_KEY, JSON.stringify(compareList));
     } catch (error) {
-      console.error('Failed to save compare list to localStorage:', error);
+      logger.error('Failed to save compare list to localStorage:', error);
     }
   }, [compareList]);
 
   // Memoized function to add a hero to the compare list
   const addToCompare = useCallback((hero: Superhero) => {
-    logDebug('Attempting to add hero to compare:', hero.name);
+    logger.debug('Attempting to add hero to compare:', hero.name);
     setCompareList(prev => {
       // Use the Set for a faster check of existence
       if (compareIdSet.has(hero.id)) {
-        logDebug('Hero already in compare list');
+        logger.debug('Hero already in compare list');
         return prev;
       }
       
       if (prev.length >= MAX_COMPARE) {
-        logDebug('Compare list full');
+        logger.debug('Compare list full');
         return prev;
       }
       
@@ -111,7 +105,7 @@ export function useCompare() {
 
   // Memoized function to remove a hero from the compare list
   const removeFromCompare = useCallback((heroId: string) => {
-    logDebug('Removing hero from compare:', heroId);
+    logger.debug('Removing hero from compare:', heroId);
     setCompareList(prev => prev.filter(h => h.id !== heroId));
   }, []);  // No dependencies as it just uses the heroId parameter
 
@@ -122,7 +116,7 @@ export function useCompare() {
 
   // Memoized function to clear the compare list
   const clearCompare = useCallback(() => {
-    logDebug('Clearing compare list');
+    logger.debug('Clearing compare list for hero comparison');
     setCompareList([]);
   }, []);
 

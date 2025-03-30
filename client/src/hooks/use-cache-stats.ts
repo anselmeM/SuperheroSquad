@@ -1,4 +1,8 @@
 import { useState, useEffect } from 'react';
+import { createLogger } from '@/utils/config';
+
+// Create a logger for the cache-stats module
+const logger = createLogger('cache-stats');
 
 export interface CacheStatsType {
   size: number;
@@ -41,7 +45,7 @@ export function useCacheStats() {
         setLastUpdated(Date.now());
         setError(null);
       } catch (err) {
-        console.error('Error fetching cache stats:', err);
+        logger.error('Error fetching cache stats:', err);
         setError(err instanceof Error ? err.message : 'Unknown error fetching cache stats');
       } finally {
         setLoading(false);
@@ -62,7 +66,7 @@ export function useCacheStats() {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsUrl = `${protocol}//${window.location.host}/ws`;
         
-        console.log(`Attempting to connect to WebSocket at: ${wsUrl}`);
+        logger.info(`Attempting to connect to WebSocket at: ${wsUrl}`);
         
         let socket: WebSocket | null = null;
         let reconnectTimer: NodeJS.Timeout | null = null;
@@ -81,9 +85,7 @@ export function useCacheStats() {
             socket = new WebSocket(wsUrl);
             
             socket.onopen = () => {
-              if (process.env.NODE_ENV === 'development') {
-                console.log('WebSocket connected for cache stats');
-              }
+              logger.info('WebSocket connected for cache stats');
               reconnectAttempts = 0; // Reset reconnect attempts counter on successful connection
               
               try {
@@ -95,7 +97,7 @@ export function useCacheStats() {
                   }));
                 }
               } catch (sendError) {
-                console.error('WebSocket send error:', sendError);
+                logger.error('WebSocket send error:', sendError);
               }
             };
             
@@ -108,30 +110,24 @@ export function useCacheStats() {
                   setStats(data);
                   setLastUpdated(data.timestamp || Date.now());
                 } else if (data.type === 'pong') {
-                  if (process.env.NODE_ENV === 'development') {
-                    console.log('WebSocket connection confirmed (pong received)');
-                  }
+                  logger.debug('WebSocket connection confirmed (pong received)');
                 } else if (data.type === 'connection') {
-                  if (process.env.NODE_ENV === 'development') {
-                    console.log('WebSocket connection established:', data.message);
-                  }
+                  logger.debug('WebSocket connection established:', data.message);
                 } else if (data.type === 'error') {
-                  console.error('WebSocket error message:', data.message);
+                  logger.error('WebSocket error message:', data.message);
                 }
               } catch (err) {
-                console.error('Error processing WebSocket message:', err);
+                logger.error('Error processing WebSocket message:', err);
               }
             };
             
             socket.onerror = (event) => {
-              console.error('WebSocket error event:', event);
+              logger.error('WebSocket error event:', event);
               setError('WebSocket connection error. Cache stats may not update in real-time.');
             };
             
             socket.onclose = (event) => {
-              if (process.env.NODE_ENV === 'development') {
-                console.log(`WebSocket closed: ${event.code} ${event.reason}`);
-              }
+              logger.debug(`WebSocket closed: ${event.code} ${event.reason}`);
               
               // Attempt to reconnect if the connection was closed unexpectedly
               if (event.code !== 1000 && reconnectAttempts < maxReconnectAttempts) {
@@ -140,21 +136,19 @@ export function useCacheStats() {
                   30000 // Maximum 30 second delay
                 );
                 
-                if (process.env.NODE_ENV === 'development') {
-                  console.log(`Attempting to reconnect WebSocket in ${delay}ms (attempt ${reconnectAttempts + 1}/${maxReconnectAttempts})`);
-                }
+                logger.info(`Attempting to reconnect WebSocket in ${delay}ms (attempt ${reconnectAttempts + 1}/${maxReconnectAttempts})`);
                 
                 reconnectTimer = setTimeout(() => {
                   reconnectAttempts++;
                   connectWebSocket();
                 }, delay);
               } else if (reconnectAttempts >= maxReconnectAttempts) {
-                console.warn('Maximum WebSocket reconnect attempts reached');
+                logger.warn('Maximum WebSocket reconnect attempts reached');
                 setError('Failed to establish real-time connection after multiple attempts. Please refresh the page to try again.');
               }
             };
           } catch (connectionError) {
-            console.error('Error setting up WebSocket:', connectionError);
+            logger.error('Error setting up WebSocket:', connectionError);
             setError('Error setting up real-time connection. Stats will not update automatically.');
           }
         };
@@ -174,11 +168,11 @@ export function useCacheStats() {
               clearTimeout(reconnectTimer);
             }
           } catch (cleanupError) {
-            console.error('WebSocket cleanup error:', cleanupError);
+            logger.error('WebSocket cleanup error:', cleanupError);
           }
         };
       } catch (setupError) {
-        console.error('WebSocket setup error:', setupError);
+        logger.error('WebSocket setup error:', setupError);
         setError('Failed to set up real-time connection. Using fallback to REST API only.');
         return () => {}; // Empty cleanup function
       }

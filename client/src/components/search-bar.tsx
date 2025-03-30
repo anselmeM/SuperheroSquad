@@ -7,6 +7,10 @@ import {
   Zap, Brain, Shield, Dumbbell, Wind, Activity,
   User
 } from "lucide-react";
+import { createLogger } from "@/utils/config";
+
+// Create a structured logger for the search functionality
+const logger = createLogger('search');
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -71,6 +75,7 @@ export function SearchBar({ onSearch, isLoading, initialSearchParams }: SearchBa
   // Fetch suggestions when input changes
   useEffect(() => {
     if (input.trim().length < 2) {
+      logger.debug('Input too short, clearing suggestions');
       setSuggestions([]);
       setOpen(false);
       return;
@@ -79,9 +84,13 @@ export function SearchBar({ onSearch, isLoading, initialSearchParams }: SearchBa
     // Debounce the API call
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
+      logger.debug('Cleared previous debounce timer');
     }
+    
+    logger.debug(`Setting up debounced search for: "${input}"`);
 
     debounceTimerRef.current = setTimeout(async () => {
+      logger.debug(`Executing search for "${input}"...`);
       setIsLoadingSuggestions(true);
       try {
         const response = await fetch(`/api/search?query=${encodeURIComponent(input)}`);
@@ -93,14 +102,16 @@ export function SearchBar({ onSearch, isLoading, initialSearchParams }: SearchBa
             name: hero.name
           })).slice(0, 5); // Limit to 5 suggestions
           
+          logger.debug(`Found ${data.results.length} heroes, showing ${heroSuggestions.length} suggestions`);
           setSuggestions(heroSuggestions);
           setOpen(heroSuggestions.length > 0);
         } else {
+          logger.debug(`No results found for "${input}" or API returned an error`);
           setSuggestions([]);
           setOpen(false);
         }
       } catch (error) {
-        console.error("Error fetching suggestions:", error);
+        logger.error("Error fetching suggestions:", error);
         setSuggestions([]);
       } finally {
         setIsLoadingSuggestions(false);
@@ -116,11 +127,14 @@ export function SearchBar({ onSearch, isLoading, initialSearchParams }: SearchBa
 
   const handleSearch = () => {
     if (input.trim()) {
+      logger.debug(`Performing search: "${input.trim()}" with ${activeFilterCount} active filters`);
       setOpen(false);
       onSearch({
         term: input.trim(),
         filters,
       });
+    } else {
+      logger.debug('Search attempted with empty input');
     }
   };
 
@@ -131,6 +145,7 @@ export function SearchBar({ onSearch, isLoading, initialSearchParams }: SearchBa
   };
 
   const handleSelectSuggestion = (hero: Suggestion) => {
+    logger.debug(`Selected hero suggestion: ${hero.name} (${hero.id})`);
     setInput(hero.name);
     setOpen(false);
     
@@ -142,6 +157,7 @@ export function SearchBar({ onSearch, isLoading, initialSearchParams }: SearchBa
   };
 
   const clearInput = () => {
+    logger.debug('Clearing search input');
     setInput('');
     setSuggestions([]);
     setOpen(false);
