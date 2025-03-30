@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { createLogger } from '@/utils/config';
+import { SafeWebSocket } from '@/utils/safe-websocket';
 
 // Create a logger for the cache-stats module
 const logger = createLogger('cache-stats');
@@ -15,6 +16,7 @@ interface CacheStatsResponse {
   hero: CacheStatsType;
   search: CacheStatsType;
   timestamp: number;
+  type?: string;
 }
 
 /**
@@ -30,10 +32,8 @@ export function useCacheStats() {
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
 
   // Define refs outside useEffect to maintain state across renders
-  const socketRef = useRef<WebSocket | null>(null);
-  const reconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const reconnectAttemptsRef = useRef<number>(0);
-  const isUnmountingRef = useRef<boolean>(false);
+  const socketRef = useRef<SafeWebSocket | null>(null);
+  const heartbeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Initial fetch of stats via REST API
   useEffect(() => {
@@ -66,174 +66,74 @@ export function useCacheStats() {
     // Only connect to WebSocket if we're on a client (browser)
     if (typeof window === 'undefined') return;
     
-    // Connection parameters
-    const MAX_RECONNECT_ATTEMPTS = 5;
-    const BASE_RECONNECT_DELAY = 1000; // Start with 1 second delay
-    const MAX_RECONNECT_DELAY = 30000; // Maximum 30 second delay
-    
     // Determine WebSocket URL using window.location
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.host;
     const wsUrl = `${protocol}//${host}/ws`;
     
-    logger.info(`Initializing WebSocket for cache stats: ${wsUrl}`);
+    logger.info(`Initializing SafeWebSocket for cache stats: ${wsUrl}`);
     
-    // Calculate reconnect delay with exponential backoff
-    const getReconnectDelay = () => {
-      return Math.min(
-        BASE_RECONNECT_DELAY * Math.pow(1.5, reconnectAttemptsRef.current),
-        MAX_RECONNECT_DELAY
-      );
-    };
+    // Create the SafeWebSocket instance
+    socketRef.current = new SafeWebSocket(wsUrl, {
+      maxReconnectAttempts: 5,
+      reconnectDelay: 1000,
+      autoReconnect: true
+    });
     
-    // Safely send a message through the WebSocket
-    const safeSend = (message: object): boolean => {
+    // Register message handler
+    socketRef.current.onMessage((data) => {
       try {
-        if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-          socketRef.current.send(JSON.stringify(message));
-          return true;
+        if (data.type === 'cache-stats') {
+          setStats(data);
+          setLastUpdated(data.timestamp || Date.now());
         }
-        return false;
-      } catch (err) {
-        logger.error('Error sending WebSocket message:', err);
-        return false;
+      } catch (parseErr) {
+        logger.error('Error handling WebSocket message:', parseErr);
       }
-    };
+    });
     
-    // Handle WebSocket connection and reconnection
-    const connectWebSocket = () => {
-      try {
-        // Skip if we're unmounting or already have an active connection
-        if (isUnmountingRef.current) return;
-        
-        if (socketRef.current && 
-            (socketRef.current.readyState === WebSocket.OPEN || 
-             socketRef.current.readyState === WebSocket.CONNECTING)) {
-          logger.debug('WebSocket already connected or connecting');
-          return;
-        }
-        
-        // Close any existing connection
-        if (socketRef.current) {
-          try {
-            socketRef.current.close();
-          } catch (closeErr) {
-            logger.debug('Error closing existing socket:', closeErr);
-          }
-          socketRef.current = null;
-        }
-        
-        logger.debug(`Attempting WebSocket connection (attempt ${reconnectAttemptsRef.current + 1}/${MAX_RECONNECT_ATTEMPTS})`);
-        
-        // Gracefully handle WebSocket creation errors
-        try {
-          socketRef.current = new WebSocket(wsUrl);
-          logger.debug('WebSocket created successfully');
-        } catch (wsError) {
-          // Handle WebSocket constructor errors (like invalid URL)
-          logger.error('Error creating WebSocket:', wsError);
-          setError(`WebSocket connection failed: ${wsError instanceof Error ? wsError.message : String(wsError)}`);
-          
-          // Don't throw, schedule reconnect instead
-          if (reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
-            const delay = getReconnectDelay();
-            reconnectTimerRef.current = setTimeout(() => {
-              reconnectAttemptsRef.current += 1;
-              connectWebSocket();
-            }, delay);
-          }
-          return;
-        }
-        
-        // Setup event handlers for the new connection
-        if (socketRef.current) {
-          // Connection established handler
-          socketRef.current.onopen = () => {
-            logger.info('WebSocket connection established');
-            reconnectAttemptsRef.current = 0;
-            setError(null);
-            safeSend({ type: 'ping', timestamp: Date.now() });
-          };
-          
-          // Message handler
-          socketRef.current.onmessage = (event) => {
-            try {
-              const data = JSON.parse(event.data as string);
-              if (data.type === 'cache-stats') {
-                setStats(data);
-                setLastUpdated(data.timestamp || Date.now());
-              }
-            } catch (parseErr) {
-              logger.error('Error parsing WebSocket message:', parseErr);
-            }
-          };
-          
-          // Error handler
-          socketRef.current.onerror = (event) => {
-            logger.error('WebSocket error:', event);
-          };
-          
-          // Connection closure handler
-          socketRef.current.onclose = (event) => {
-            logger.debug(`WebSocket closed: code=${event.code}, clean=${event.wasClean}`);
-            socketRef.current = null;
-            
-            // Attempt reconnection for unexpected closures
-            const isNormalClosure = event.code === 1000 && event.wasClean;
-            if (!isNormalClosure && 
-                reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS && 
-                !isUnmountingRef.current) {
-              
-              const delay = getReconnectDelay();
-              logger.info(`Scheduling reconnection in ${delay}ms`);
-              setError(`Connection lost. Reconnecting (${reconnectAttemptsRef.current + 1}/${MAX_RECONNECT_ATTEMPTS})...`);
-              
-              reconnectTimerRef.current = setTimeout(() => {
-                if (!isUnmountingRef.current) {
-                  reconnectAttemptsRef.current += 1;
-                  connectWebSocket();
-                }
-              }, delay);
-            } 
-            else if (reconnectAttemptsRef.current >= MAX_RECONNECT_ATTEMPTS && !isUnmountingRef.current) {
-              setError('Could not establish a stable connection. Cache statistics may be outdated.');
-            }
-          };
-        }
-      } catch (setupError) {
-        // Catch-all for any other errors during setup
-        logger.error('Error in WebSocket setup:', setupError);
-        setError('Failed to set up WebSocket connection');
-      }
-    };
+    // Register error handler
+    socketRef.current.onError((error) => {
+      logger.error('WebSocket error:', error);
+      setError('Connection error. Stats may be outdated.');
+    });
     
-    // Start the initial connection
-    connectWebSocket();
+    // Register connection handler
+    socketRef.current.onConnect(() => {
+      logger.info('WebSocket connection established');
+      setError(null);
+      
+      // Send a ping message to verify connection
+      socketRef.current?.send({ 
+        type: 'ping', 
+        timestamp: Date.now() 
+      });
+    });
     
-    // Heartbeat to detect dead connections
-    const heartbeatInterval = setInterval(() => {
-      if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-        safeSend({ type: 'ping', timestamp: Date.now() });
+    // Start the connection
+    socketRef.current.connect().catch(error => {
+      logger.error('Failed to connect WebSocket:', error);
+      setError('Failed to establish real-time connection. Stats may be outdated.');
+    });
+    
+    // Setup a heartbeat interval to detect dead connections
+    heartbeatIntervalRef.current = setInterval(() => {
+      if (socketRef.current?.isConnected()) {
+        socketRef.current.send({ type: 'ping', timestamp: Date.now() });
       }
     }, 30000);
     
     // Cleanup on unmount
     return () => {
-      logger.debug('Cleaning up WebSocket resources');
-      isUnmountingRef.current = true;
+      logger.debug('Cleaning up SafeWebSocket resources');
       
-      if (reconnectTimerRef.current) {
-        clearTimeout(reconnectTimerRef.current);
+      if (heartbeatIntervalRef.current) {
+        clearInterval(heartbeatIntervalRef.current);
+        heartbeatIntervalRef.current = null;
       }
       
-      clearInterval(heartbeatInterval);
-      
       if (socketRef.current) {
-        try {
-          socketRef.current.close(1000, 'Component unmounting');
-        } catch (closeErr) {
-          logger.error('Error closing WebSocket:', closeErr);
-        }
+        socketRef.current.close();
         socketRef.current = null;
       }
     };
