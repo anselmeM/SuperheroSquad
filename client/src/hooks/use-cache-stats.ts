@@ -55,16 +55,16 @@ export function useCacheStats() {
     fetchStats();
   }, []);
 
+  // Define refs outside useEffect to maintain state across renders
+  const socketRef = useRef<WebSocket | null>(null);
+  const reconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectAttemptsRef = useRef<number>(0);
+  const isUnmountingRef = useRef<boolean>(false);
+  
   // WebSocket connection for real-time updates
   useEffect(() => {
     // Only connect to WebSocket if we're on a client (browser)
     if (typeof window === 'undefined') return;
-    
-    // Use refs to maintain WebSocket state across renders
-    const socketRef = useRef<WebSocket | null>(null);
-    const reconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
-    const reconnectAttemptsRef = useRef<number>(0);
-    const isUnmountingRef = useRef<boolean>(false);
     
     // WebSocket connection parameters
     const MAX_RECONNECT_ATTEMPTS = 5;
