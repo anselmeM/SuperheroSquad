@@ -6,6 +6,7 @@ import { Link } from "wouter";
 import { ArrowLeft, Database, X } from "lucide-react";
 import { type PowerStats, type Superhero } from "@shared/schema";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { ShareButtons } from "@/components/share-buttons";
 import { 
   Radar, 
   RadarChart, 
@@ -63,6 +64,13 @@ export default function Compare() {
               </Button>
             </Link>
             <ThemeToggle />
+            {compareList.length > 0 && (
+              <ShareButtons 
+                title="Superhero Comparison"
+                description={`Check out this comparison of ${compareList.map(hero => hero.name).join(' vs ')}!`}
+                hashtags={['superheroes', 'comparison', 'stats']}
+              />
+            )}
           </div>
         </div>
 

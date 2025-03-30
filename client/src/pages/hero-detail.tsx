@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useRoute, Link } from "wouter";
+import { useRoute, Link, useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Heart, BarChart2, Users, Briefcase, MapPin, Book } from "lucide-react";
@@ -12,6 +12,7 @@ import { useFavorites } from "@/hooks/use-favorites";
 import { useCompare } from "@/hooks/use-compare";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
+import { ShareButtons } from "@/components/share-buttons";
 import type { Superhero } from "@shared/schema";
 import NotFound from "./not-found";
 
@@ -170,6 +171,11 @@ export default function HeroDetail() {
               <span className="sm:hidden">{isInCompare(hero.id) ? "Uncompare" : "Compare"}</span>
             </Button>
             <ThemeToggle />
+            <ShareButtons 
+              title={`${hero.name} - Superhero Profile`}
+              description={`Check out ${hero.name}'s superhero profile and stats!`}
+              imageUrl={hero.image.url}
+            />
           </div>
         </div>
 

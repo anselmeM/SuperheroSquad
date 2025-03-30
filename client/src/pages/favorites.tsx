@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import { SuperheroCard } from "@/components/superhero-card";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { ShareButtons } from "@/components/share-buttons";
 import { useFavorites } from "@/hooks/use-favorites";
 import { useCompare } from "@/hooks/use-compare";
 import { useToast } from "@/hooks/use-toast";
@@ -121,6 +122,13 @@ export default function Favorites() {
               </Button>
             </Link>
             <ThemeToggle />
+            {favorites.length > 0 && (
+              <ShareButtons 
+                title="My Favorite Superheroes"
+                description={`Check out my collection of ${favorites.length} favorite superheroes!`}
+                hashtags={['superheroes', 'favorites', 'collection']}
+              />
+            )}
           </div>
         </div>
 
