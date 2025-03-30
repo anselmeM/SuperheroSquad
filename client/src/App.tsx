@@ -37,11 +37,28 @@ function App() {
       // Prevent the default browser behavior which logs the error
       event.preventDefault();
       
-      // Log the error using our structured logger
+      // Get more detailed information about the rejection
+      const reason = event.reason;
+      const stack = reason instanceof Error ? reason.stack : null;
+      const message = reason instanceof Error ? reason.message : String(reason);
+      
+      // Log detailed error information
       logger.error(
         'Unhandled Promise Rejection:',
-        event.reason instanceof Error ? event.reason : new Error(String(event.reason))
+        {
+          message,
+          stack,
+          type: reason?.constructor?.name || typeof reason,
+          // Log additional context that might help with debugging
+          url: window.location.href,
+          timestamp: new Date().toISOString()
+        }
       );
+      
+      // If this is a network error (like WebSocket connection failure), log it specially
+      if (message.includes('WebSocket') || message.includes('network') || message.includes('fetch')) {
+        logger.warn('Network-related error detected. This may be related to WebSocket connections or API requests.');
+      }
       
       // Return true to indicate we've handled the event
       return true;
