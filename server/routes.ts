@@ -52,7 +52,14 @@ const ALLOWED_ORIGINS = [
   
   // Match more specific deployment patterns
   // Example: <random-id>-<slug>-<username>.replit.app
-  /^https?:\/\/[a-zA-Z0-9-]+-[a-zA-Z0-9-]+-[a-zA-Z0-9-]+\.replit\.app$/
+  /^https?:\/\/[a-zA-Z0-9-]+-[a-zA-Z0-9-]+-[a-zA-Z0-9-]+\.replit\.app$/,
+  
+  // Match all Replit workspace domains for maximum compatibility
+  /^https?:\/\/.*\.replit\.dev$/,
+  
+  // Allow all connections when in development mode
+  // This is more permissive but ensures connectivity during development
+  ...(process.env.NODE_ENV !== 'production' ? [/.*/] : [])
 ];
 
 /**
@@ -603,8 +610,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Empty origin is allowed for non-browser clients
       if (!origin) return true;
       
+      // In development mode, be more permissive for easier debugging
+      if (process.env.NODE_ENV !== 'production') {
+        logger.debug(`Allowing connection from origin in development mode: ${origin}`);
+        return true;
+      }
+      
       // Check against allowed origins patterns
-      return ALLOWED_ORIGINS.some(pattern => pattern.test(origin));
+      const isAllowed = ALLOWED_ORIGINS.some(pattern => pattern.test(origin));
+      
+      if (isAllowed) {
+        logger.debug(`Origin '${origin}' matched allowed pattern`);
+      } else {
+        logger.warn(`Origin '${origin}' did not match any allowed patterns`);
+      }
+      
+      return isAllowed;
     } catch (error) {
       logger.error('Origin validation error:', error);
       return false;

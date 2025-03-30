@@ -71,11 +71,13 @@ export function useCacheStats() {
     const BASE_RECONNECT_DELAY = 1000; // Start with 1 second delay
     const MAX_RECONNECT_DELAY = 30000; // Maximum 30 second delay
     
-    // Determine WebSocket URL
+    // Determine WebSocket URL, handling various development and production environments
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    // For development/testing environments, be more flexible with WebSocket connections
     const wsUrl = `${protocol}//${window.location.host}/ws`;
     
     logger.info(`Initializing WebSocket connection handler for: ${wsUrl}`);
+    logger.debug(`Current origin: ${window.location.origin}`);
     
     // Function to calculate reconnect delay with exponential backoff
     const getReconnectDelay = () => {
@@ -125,11 +127,23 @@ export function useCacheStats() {
         logger.debug(`Attempting WebSocket connection (attempt ${reconnectAttemptsRef.current + 1}/${MAX_RECONNECT_ATTEMPTS})`);
         
         // Create new WebSocket connection with error handling
-        const socket = new WebSocket(wsUrl);
-        socketRef.current = socket;
+        try {
+          socketRef.current = new WebSocket(wsUrl);
+          logger.debug('WebSocket instance created successfully');
+        } catch (wsError) {
+          logger.error('Error creating WebSocket:', wsError);
+          throw wsError; // Let the outer catch block handle reconnection
+        }
+        
+        // We know socketRef.current is defined here because if the WebSocket constructor threw,
+        // the exception would have been caught above
+        // TypeScript doesn't know that socketRef.current is defined here, so we'll handle it safely
+        if (!socketRef.current) {
+          throw new Error('WebSocket instance was unexpectedly null after creation');
+        }
         
         // Connection successfully established
-        socket.onopen = () => {
+        socketRef.current.onopen = () => {
           logger.info('WebSocket connection established successfully');
           reconnectAttemptsRef.current = 0; // Reset counter on successful connection
           setError(null); // Clear any previous connection errors
@@ -142,9 +156,9 @@ export function useCacheStats() {
         };
         
         // Handle incoming messages
-        socket.onmessage = (event) => {
+        socketRef.current.onmessage = (event: MessageEvent) => {
           try {
-            const data = JSON.parse(event.data);
+            const data = JSON.parse(event.data as string);
             
             switch (data.type) {
               case 'cache-stats':
@@ -173,13 +187,13 @@ export function useCacheStats() {
         };
         
         // Handle connection errors
-        socket.onerror = (event) => {
+        socketRef.current.onerror = (event: Event) => {
           // Just log the error event here, actual reconnect logic is in onclose
           logger.error('WebSocket error event occurred', event);
         };
         
         // Handle connection closure and implement reconnection strategy
-        socket.onclose = (event) => {
+        socketRef.current.onclose = (event: CloseEvent) => {
           logger.debug(`WebSocket closed: code=${event.code}, reason=${event.reason || 'No reason provided'}, wasClean=${event.wasClean}`);
           
           // Clear socket reference
