@@ -6,6 +6,49 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&family=Major+Mono+Display&family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    
+    <!-- HMR WebSocket Fix: Must be before any other scripts -->
+    <script>
+      (function() {
+        // Fix for Vite HMR WebSocket connection issues
+        console.info('[HMR Fix] Initializing WebSocket patching');
+        
+        // Store original WebSocket constructor
+        var OriginalWebSocket = window.WebSocket;
+        
+        // Replace WebSocket constructor with our fixed version
+        window.WebSocket = function(url, protocols) {
+          // Check if this is the problematic Vite HMR URL
+          if (typeof url === 'string' && url.includes('localhost:undefined')) {
+            // Extract the token from the invalid URL
+            var tokenMatch = url.match(/\?token=([^&]+)/);
+            var token = tokenMatch ? tokenMatch[1] : '';
+            
+            // Get the current host and construct a valid WebSocket URL
+            var protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            var host = window.location.host;
+            var newUrl = protocol + '//' + host + (token ? '?token=' + token : '');
+            
+            console.info('[HMR Fix] Fixed WebSocket URL:', url, '→', newUrl);
+            return new OriginalWebSocket(newUrl, protocols);
+          }
+          
+          // For all other WebSocket connections, use the original implementation
+          return new OriginalWebSocket(url, protocols);
+        };
+        
+        // Copy prototype
+        window.WebSocket.prototype = OriginalWebSocket.prototype;
+        
+        // Copy static properties
+        window.WebSocket.CONNECTING = OriginalWebSocket.CONNECTING;
+        window.WebSocket.OPEN = OriginalWebSocket.OPEN;
+        window.WebSocket.CLOSING = OriginalWebSocket.CLOSING;
+        window.WebSocket.CLOSED = OriginalWebSocket.CLOSED;
+        
+        console.info('[HMR Fix] WebSocket constructor patched successfully');
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

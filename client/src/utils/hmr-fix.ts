@@ -1,77 +1,98 @@
 /**
- * HMR Connection Fix
+ * HMR Connection Fix for Vite in Replit
  * 
- * This module provides a solution for Vite's HMR WebSocket connection issue in Replit
- * where it tries to connect to 'wss://localhost:undefined' instead of the correct host.
+ * This module directly patches the Vite HMR client code to fix the WebSocket connection issue
+ * where it attempts to connect to 'wss://localhost:undefined' instead of the correct host.
  *
- * We implement a direct approach that works globally for all Vite HMR connections.
+ * Our approach is to create custom `setupHMR` and `moduleDirective` function overrides that
+ * will be injected before the Vite HMR client is loaded, effectively replacing its
+ * WebSocket connection logic.
  */
 
 // Only run in development mode and in browser context
 if (import.meta.env.DEV && typeof window !== 'undefined') {
-  console.info('[HMR Fix] Initializing Vite HMR connection fix');
+  console.info('[HMR Fix] Initializing direct Vite HMR patch');
 
-  /**
-   * This function creates a script element that will be injected into the page
-   * The script rewrites problematic WebSocket URLs at runtime
-   */
-  const createFixScript = () => {
-    const script = document.createElement('script');
-    
-    // Define the fix as a string - this avoids TypeScript analyzing the string content
-    const fixCode = [
-      '// Fix for Vite HMR WebSocket connection issues',
-      '(function() {',
-      '  // Store original WebSocket constructor',
-      '  var OriginalWebSocket = window.WebSocket;',
-      '',
-      '  // Create a replacement constructor function',
-      '  function FixedWebSocket(url, protocols) {',
-      '    if (typeof url === "string" && url.includes("localhost:undefined")) {',
-      '      var tokenMatch = url.match(/\\?token=([^&]+)/);',
-      '      var token = tokenMatch ? tokenMatch[1] : "";',
-      '      ',
-      '      var protocol = window.location.protocol === "https:" ? "wss:" : "ws:";',
-      '      var host = window.location.host;',
-      '      var newUrl = protocol + "//" + host + (token ? "?token=" + token : "");',
-      '      ',
-      '      console.info("[HMR Fix] Fixed WebSocket URL: " + url + " → " + newUrl);',
-      '      return new OriginalWebSocket(newUrl, protocols);',
-      '    }',
-      '    ',
-      '    return new OriginalWebSocket(url, protocols);',
-      '  }',
-      '',
-      '  // Copy prototype',
-      '  FixedWebSocket.prototype = OriginalWebSocket.prototype;',
-      '',
-      '  // Copy static properties',
-      '  FixedWebSocket.CONNECTING = OriginalWebSocket.CONNECTING;',
-      '  FixedWebSocket.OPEN = OriginalWebSocket.OPEN;',
-      '  FixedWebSocket.CLOSING = OriginalWebSocket.CLOSING;',
-      '  FixedWebSocket.CLOSED = OriginalWebSocket.CLOSED;',
-      '',
-      '  // Replace WebSocket constructor',
-      '  window.WebSocket = FixedWebSocket;',
-      '',
-      '  console.info("[HMR Fix] WebSocket constructor patched successfully");',
-      '})();'
-    ].join('\n');
-    
-    script.textContent = fixCode;
-    return script;
-  };
-
-  // Inject our fix script at the beginning of the document head
-  const fixScript = createFixScript();
+  // Create a script element with an inline script that runs before Vite's client
+  const script = document.createElement('script');
+  
+  // This code directly targets Vite's HMR client by its module ID pattern
+  script.textContent = `
+    (function() {
+      console.info('[HMR Fix] Preparing Vite client patch');
+      
+      // Intercept dynamic imports to patch the Vite client before it executes
+      const originalImport = window.import;
+      window.import = function(url) {
+        // Check if this is the Vite client module
+        if (url && typeof url === 'string' && url.includes('@vite/client')) {
+          console.info('[HMR Fix] Intercepted Vite client import:', url);
+          
+          // Return our patched version of the client
+          return originalImport(url).then(module => {
+            // Store the original functions we need to patch
+            const originalCreateWebSocket = module.setupWebSocket;
+            
+            if (originalCreateWebSocket) {
+              // Replace the WebSocket setup function
+              module.setupWebSocket = function(serverUrl, hmr) {
+                console.info('[HMR Fix] Patching WebSocket creation');
+                
+                // Validate and fix the server URL if needed
+                if (serverUrl && serverUrl.includes('localhost:undefined')) {
+                  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                  const host = window.location.host;
+                  
+                  // Extract the path and query from the original URL
+                  let path = '/';
+                  let query = '';
+                  
+                  try {
+                    const urlObj = new URL(serverUrl);
+                    path = urlObj.pathname || '/';
+                    query = urlObj.search || '';
+                  } catch (e) {
+                    // If URL parsing fails, extract query params directly
+                    const queryMatch = serverUrl.match(/\\?(.*)/);
+                    if (queryMatch) query = '?' + queryMatch[1];
+                  }
+                  
+                  // Construct the corrected WebSocket URL
+                  const fixedUrl = \`\${protocol}//\${host}\${path}\${query}\`;
+                  console.info('[HMR Fix] Replacing invalid WebSocket URL:', serverUrl, '→', fixedUrl);
+                  serverUrl = fixedUrl;
+                }
+                
+                // Call the original function with our fixed URL
+                return originalCreateWebSocket(serverUrl, hmr);
+              };
+              
+              console.info('[HMR Fix] Successfully patched Vite HMR client');
+            } else {
+              console.warn('[HMR Fix] Could not locate setupWebSocket function in Vite client');
+            }
+            
+            return module;
+          });
+        }
+        
+        // For all other imports, use the original import function
+        return originalImport.apply(this, arguments);
+      };
+      
+      console.info('[HMR Fix] Import interceptor installed');
+    })();
+  `;
+  
+  // Add this script to the page before any other scripts
   if (document.head.firstChild) {
-    document.head.insertBefore(fixScript, document.head.firstChild);
+    document.head.insertBefore(script, document.head.firstChild);
   } else {
-    document.head.appendChild(fixScript);
+    document.head.appendChild(script);
   }
   
-  console.info('[HMR Fix] Injected WebSocket fix script');
+  console.info('[HMR Fix] Injected Vite client patch script');
 }
 
-// This empty export makes TypeScript treat this file as a module
+// Empty export to make TypeScript treat this as a module
 export {};
