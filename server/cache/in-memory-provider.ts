@@ -129,18 +129,19 @@ export class InMemoryCacheProvider<T> implements CacheService<T> {
       }
     }
     
-    // Check selected keys for expiry by calling the public get method
-    // This ensures that the cache's hit/miss logic is also triggered
-    const initialSize = this.cache.size;
-
+    // Check selected keys for expiry directly to avoid skewing cache stats
+    let removedCount = 0;
     for (const key of selectedKeys) {
-      // Calling get() will check for expiry and remove the item if needed
-      this.get(key);
+      const item = this.cache.get(key);
+      // Check for expiry directly to avoid skewing cache stats (e.g., `misses` count).
+      if (item && now > item.expiry) {
+        if (this.cache.delete(key)) {
+          removedCount++;
+        }
+      }
     }
     
-    const finalSize = this.cache.size;
-
-    return initialSize - finalSize;
+    return removedCount;
   }
   
   /**
