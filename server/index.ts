@@ -1,4 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
+import RateLimit from 'express-rate-limit';
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { ZodError } from "zod";
@@ -10,6 +11,12 @@ const logger = createLogger('server');
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+const limiter = RateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // max 100 requests per windowMs
+});
+app.use(limiter);
 
 app.use((req, res, next) => {
   const start = Date.now();

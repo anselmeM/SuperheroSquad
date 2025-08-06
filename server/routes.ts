@@ -101,6 +101,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/hero/:id", async (req, res) => {
     try {
       const { id } = req.params;
+      if (!/^\d+$/.test(id)) {
+        return res.status(400).json({ error: "Invalid hero ID format" });
+      }
       const cacheKey = CacheFactory.getHeroCacheKey(id);
       
       // Try to get from cache first
