@@ -20,6 +20,7 @@ import { WebSocketServer, WebSocket } from "ws";
 import { URL } from "url";
 import { appConfig, createLogger } from "./utils/config";
 import { handleApiError } from "./utils/errorHandler";
+import { ApiHttpError } from "./utils/ApiHttpError";
 
 // Make sure WebSocket.OPEN is defined (fixing potential issues with type imports)
 const WS_OPEN = WebSocket.OPEN;
@@ -132,9 +133,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       if (!response.ok) {
-        const error: any = new Error(`API HTTP Error: ${response.status} ${response.statusText}`);
-        error.response = { status: response.status, statusText: response.statusText };
-        throw error;
+        const errorBody = await response.text().catch(() => null);
+        throw new ApiHttpError(`API HTTP Error: ${response.status} ${response.statusText}`, response.status, response.statusText, errorBody);
       }
       
       // Try parsing the successful response
@@ -224,9 +224,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       if (!response.ok) {
-        const error: any = new Error(`API HTTP Error: ${response.status} ${response.statusText}`);
-        error.response = { status: response.status, statusText: response.statusText };
-        throw error;
+        const errorBody = await response.text().catch(() => null);
+        throw new ApiHttpError(`API HTTP Error: ${response.status} ${response.statusText}`, response.status, response.statusText, errorBody);
       }
       
       // Try parsing the successful response

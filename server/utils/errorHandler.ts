@@ -7,7 +7,11 @@ const logger = createLogger("errorHandler");
 interface ApiError extends Error {
   status?: number;
   statusCode?: number;
-  response?: any;
+  response?: {
+    status: number;
+    statusText: string;
+    body?: string | null;
+  };
   code?: string;
 }
 
@@ -33,6 +37,12 @@ export function handleApiError(res: Response, error: ApiError, resource: string,
   if (error.response) {
     const statusCode = error.response.status || 502;
     if (statusCode === 404) {
+      if (resource === 'search') {
+        return res.status(404).json({
+          error: "No Results Found",
+          message: `No superheroes match the search query: "${resourceId}"`
+        });
+      }
       return res.status(404).json({
         error: `${resource} Not Found`,
         message: `No ${resource} found with ID: ${resourceId}`
@@ -50,7 +60,7 @@ export function handleApiError(res: Response, error: ApiError, resource: string,
     } else {
       return res.status(502).json({
         error: "External API Error",
-        message: `The Superhero API returned an error: ${statusCode} ${error.response.statusText}`
+        message: `The Superhero API returned an error: ${statusCode} ${error.response.body || error.response.statusText}`
       });
     }
   }
