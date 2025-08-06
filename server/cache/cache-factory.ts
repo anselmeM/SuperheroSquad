@@ -63,4 +63,12 @@ export class CacheFactory {
       }
     }, interval);
   }
+
+  static getHeroCacheKey(id: string): string {
+    return `hero:${id}`;
+  }
+
+  static getSearchCacheKey(query: string): string {
+    return `search:${query}`;
+  }
 }

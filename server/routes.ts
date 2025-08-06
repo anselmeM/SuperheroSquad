@@ -19,6 +19,7 @@ import { heroCache, searchCache, CacheFactory, CacheService } from "./cache";
 import { WebSocketServer, WebSocket } from "ws";
 import { URL } from "url";
 import { appConfig, createLogger } from "./utils/config";
+import { handleApiError } from "./utils/errorHandler";
 
 // Make sure WebSocket.OPEN is defined (fixing potential issues with type imports)
 const WS_OPEN = WebSocket.OPEN;
@@ -57,7 +58,7 @@ const ALLOWED_ORIGINS = [
   
   // Allow all connections when in development mode
   // This is more permissive but ensures connectivity during development
-  ...(process.env.NODE_ENV !== 'production' ? [/.*/] : [])
+  ...(process.env.NODE_ENV !== 'production' ? [/^http:\/\/localhost:\d+$/] : [])
 ];
 
 /**
@@ -100,7 +101,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/hero/:id", async (req, res) => {
     try {
       const { id } = req.params;
-      const cacheKey = `hero:${id}`;
+      const cacheKey = CacheFactory.getHeroCacheKey(id);
       
       // Try to get from cache first
       const cachedData = heroCache.get(cacheKey) as Superhero | undefined;
@@ -189,37 +190,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
     } catch (error: any) {
-      logger.error('Hero details error:', error);
-      
-      if (error instanceof ZodError) {
-        // If the API response doesn't match our schema, it's a Bad Gateway (502)
-        // This indicates the upstream server (Superhero API) sent an invalid response
-        res.status(502).json({ 
-          error: "Invalid API response format", 
-          message: "The upstream API returned a malformed response",
-          details: error.errors 
-        });
-      } else if (error instanceof TypeError && error.message?.includes('fetch')) {
-        // Network errors (cannot connect to API)
-        res.status(503).json({ 
-          error: "Service Unavailable", 
-          message: "Could not connect to the Superhero API" 
-        });
-      } else if (error.response) {
-        // The API returned an error with a status code
-        const statusCode = error.response.status || 502;
-        res.status(statusCode).json({ 
-          error: "External API error", 
-          message: error.message || "Error from Superhero API",
-          details: error.response
-        });
-      } else {
-        // Unexpected errors get 500 status
-        res.status(500).json({ 
-          error: "Internal Server Error", 
-          message: "An unexpected error occurred while processing your request"
-        });
-      }
+      handleApiError(res, error, "hero", req.params.id);
     }
   });
 
@@ -243,7 +214,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // For auto-suggestions, we optimize for speed and reduce logging
       const isAutoSuggestion = query.length < 4;  // Simple heuristic, can be adjusted
-      const cacheKey = `search:${query}`;
+      const cacheKey = CacheFactory.getSearchCacheKey(query);
       
       // Determine if we're testing expiry (for demonstration/testing purposes)
       const isTestingExpiry = expire === 'true';
@@ -325,45 +296,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Validate response data against our schema to ensure type safety
         const validatedData = await searchResponseSchema.parseAsync(data);
 
-        // Handle API error responses
-        if (validatedData.response === 'error') {
-          if (isTestingExpiry) {
-            // For testing expired cache entries, create a mock response
-            const mockResponse: SearchResponse = {
-              response: "success",
-              "results-for": query,
-              results: [
-                {
-                  id: `test-${Date.now()}`,
-                  name: query,
-                  powerstats: {
-                    intelligence: "50",
-                    strength: "50",
-                    speed: "50",
-                    durability: "50",
-                    power: "50",
-                    combat: "50"
-                  },
-                  image: {
-                    url: "https://via.placeholder.com/150"
-                  }
-                }
-              ]
-            };
-            
-            // Set custom TTL for testing cleanup
-            logger.debug(`Setting test search entry with ${customTtl}ms TTL for: ${query}`);
-            searchCache.set(cacheKey, mockResponse, customTtl);
-            
-            // For very short TTLs, wait to ensure expiry
-            if (customTtl <= 2000) {
-              // Wait 1.5x the TTL to ensure expiry
-              await new Promise(resolve => setTimeout(resolve, customTtl * 1.5));
-            }
-            
-            return res.json(mockResponse);
+        if (isTestingExpiry) {
+          const mockResponse: SearchResponse = {
+            response: "success",
+            "results-for": query,
+            results: [
+              {
+                id: `test-${Date.now()}`,
+                name: query,
+                powerstats: { intelligence: "50", strength: "50", speed: "50", durability: "50", power: "50", combat: "50" },
+                image: { url: "https://via.placeholder.com/150" },
+              },
+            ],
+          };
+          logger.debug(`Setting test search entry with ${customTtl}ms TTL for: ${query}`);
+          searchCache.set(cacheKey, mockResponse, customTtl);
+          if (customTtl <= 2000) {
+            await new Promise((resolve) => setTimeout(resolve, customTtl * 1.5));
           }
-          
+          return res.json(mockResponse);
+        }
+
+        if (validatedData.response === 'error') {
           return res.status(404).json({ 
             error: "No Results Found", 
             message: validatedData.error || `No superheroes match the search query: "${query}"`,
@@ -371,23 +325,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        // Cache strategy based on query length
         if (query.length >= 3) {
-          // If testing expiry, use a custom TTL
-          if (isTestingExpiry) {
-            logger.debug(`Setting test search entry with ${customTtl}ms TTL for: ${query}`);
-            searchCache.set(cacheKey, validatedData, customTtl);
-            
-            // For very short TTLs, wait to ensure expiry
-            if (customTtl <= 2000) {
-              // Wait 1.5x the TTL to ensure expiry
-              await new Promise(resolve => setTimeout(resolve, customTtl * 1.5));
-            }
-          } else {
-            // Normal operation: Shorter TTL for auto-suggestions since they change frequently
-            const ttl = query.length < 4 ? 10 * 60 * 1000 : undefined; // 10 minutes for short queries
-            searchCache.set(cacheKey, validatedData, ttl);
-          }
+          const ttl = isAutoSuggestion ? appConfig.cache.suggestionTtl : undefined;
+          searchCache.set(cacheKey, validatedData, ttl);
         }
 
         return res.json(validatedData); // Explicit return
@@ -399,44 +339,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
     } catch (error: any) {
-      logger.error('Search error:', error);
-      
-      if (error instanceof ZodError) {
-        // If the API response doesn't match our schema, it's a Bad Gateway (502)
-        // This indicates the upstream server (Superhero API) sent a response that doesn't match our expectations
-        res.status(502).json({ 
-          error: "Invalid API response format", 
-          message: "The Superhero API returned data in an unexpected format",
-          details: error.errors 
-        });
-      } else if (error instanceof TypeError && error.message?.includes('fetch')) {
-        // Network errors (cannot connect to API)
-        res.status(503).json({ 
-          error: "Service Unavailable", 
-          message: "Could not connect to the Superhero API at this time"
-        });
-      } else if (error.response) {
-        // The API returned an error with a status code
-        const statusCode = error.response.status || 502;
-        res.status(statusCode).json({ 
-          error: "External API error", 
-          message: error.message || "Error from Superhero API",
-          details: error.response
-        });
-      } else if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
-        // DNS or connection errors
-        res.status(503).json({ 
-          error: "Service Unavailable", 
-          message: "Connection to external API failed",
-          code: error.code
-        });
-      } else {
-        // Unexpected errors get 500 status
-        res.status(500).json({ 
-          error: "Internal Server Error", 
-          message: "An unexpected error occurred while searching for superheroes"
-        });
-      }
+      handleApiError(res, error, "search", query as string);
     }
   });
   

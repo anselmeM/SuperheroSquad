@@ -20,6 +20,10 @@ interface AppConfig {
   };
   // Runtime environment
   environment: 'development' | 'production' | 'test';
+  // Cache configuration
+  cache: {
+    suggestionTtl: number;
+  };
 }
 
 // Default configuration - will be overridden by environment variables when available
@@ -34,7 +38,10 @@ const defaultConfig: AppConfig = {
     level: process.env.NODE_ENV === 'production' ? 'error' : 'all',
     enabled: process.env.NODE_ENV !== 'production'
   },
-  environment: (process.env.NODE_ENV as AppConfig['environment']) || 'development'
+  environment: (process.env.NODE_ENV as AppConfig['environment']) || 'development',
+  cache: {
+    suggestionTtl: 10 * 60 * 1000, // 10 minutes
+  },
 };
 
 /**
