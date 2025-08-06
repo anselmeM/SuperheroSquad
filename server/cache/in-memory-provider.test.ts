@@ -103,45 +103,71 @@ describe('InMemoryCacheProvider', () => {
       expect(cache.size()).toBe(100 - removed);
     });
     
-    it('should respect minSample parameter', () => {
-      // Add 5 items
+    it('should respect minSample parameter', async () => {
+      const now = Date.now();
+      vi.spyOn(Date, 'now').mockImplementation(() => now);
+
+      // Add 5 expired items
       for (let i = 0; i < 5; i++) {
-        cache.set(`key${i}`, `value${i}`);
+        cache.set(`key${i}`, `value${i}`, -100);
       }
+      expect(cache.size()).toBe(5);
       
-      // Spy on the cache.get method to see how many items are checked
-      const getSpy = vi.spyOn(cache, 'get');
+      // Advance time to ensure items are expired
+      vi.spyOn(Date, 'now').mockImplementation(() => now + 500);
+
+      // Run cleanup with minimum 10 samples. Since we only have 5 items, all should be checked and removed.
+      const removed = cache.cleanup(0.1, 10);
       
-      // Run cleanup with minimum 10 samples, but we only have 5 items
-      // So it should check all 5 items
-      cache.cleanup(0.1, 10);
-      
-      // get is called internally by cleanup for each item it checks
-      expect(getSpy).toHaveBeenCalledTimes(5);
+      expect(removed).toBe(5);
+      expect(cache.size()).toBe(0);
     });
     
     it('should respect maxSample parameter', () => {
-      // Add 100 items
+      const now = Date.now();
+      vi.spyOn(Date, 'now').mockImplementation(() => now);
+
+      // Add 100 expired items
       for (let i = 0; i < 100; i++) {
-        cache.set(`key${i}`, `value${i}`);
+        cache.set(`key${i}`, `value${i}`, -100);
       }
+      expect(cache.size()).toBe(100);
       
-      // Mock the implementation of Map.prototype.get to track calls
-      let getCallCount = 0;
-      vi.spyOn(Map.prototype, 'get').mockImplementation(function(key) {
-        getCallCount++;
-        // @ts-ignore: we're mocking the Map
-        return this.has(key) ? { data: `value${key.slice(3)}`, expiry: Date.now() + 1000 } : undefined;
-      });
+      // Advance time to ensure items are expired
+      vi.spyOn(Date, 'now').mockImplementation(() => now + 500);
+
+      // Run cleanup with max 15 samples
+      const removed = cache.cleanup(0.2, 5, 15);
+
+      // Check that we only removed at most 15 items
+      expect(removed).toBeLessThanOrEqual(15);
+      expect(cache.size()).toBe(100 - removed);
+    });
+
+    it('should not affect cache stats during cleanup', async () => {
+      const now = Date.now();
+      vi.spyOn(Date, 'now').mockImplementation(() => now);
+
+      // Add 10 expired items
+      for (let i = 0; i < 10; i++) {
+        cache.set(`key${i}`, `value${i}`, -100);
+      }
+
+      // Get initial stats. Note: set() does not affect stats
+      const initialStats = cache.getStats();
+      expect(initialStats.misses).toBe(0);
+
+      // Advance time to ensure items are expired
+      vi.spyOn(Date, 'now').mockImplementation(() => now + 500);
       
-      // Run cleanup with max 15 samples even though 20% would be 20 samples
-      cache.cleanup(0.2, 5, 15);
+      // Run cleanup
+      cache.cleanup(1.0);
       
-      // Check that we only sampled at most 15 items
-      expect(getCallCount).toBeLessThanOrEqual(15);
+      // Get final stats
+      const finalStats = cache.getStats();
       
-      // Cleanup
-      vi.restoreAllMocks();
+      // The number of misses should NOT have changed
+      expect(finalStats.misses).toBe(initialStats.misses);
     });
     
     it('should handle empty cache gracefully', () => {
