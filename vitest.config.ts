@@ -1,11 +1,16 @@
 import { defineConfig } from 'vitest/config';
 import { mergeConfig } from 'vite';
-import path from 'path';
+import path, { dirname } from 'path';
+import { fileURLToPath } from 'url';
 import viteConfig from './vite.config';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 export default mergeConfig(
   viteConfig,
   defineConfig({
+    root: __dirname, // Override the root from vite.config.ts
     test: {
       globals: true,
       environment: 'happy-dom',
