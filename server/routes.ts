@@ -500,12 +500,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Empty origin is allowed for non-browser clients
       if (!origin) return true;
       
-      // In development mode, be more permissive for easier debugging
-      if (process.env.NODE_ENV !== 'production') {
-        logger.debug(`Allowing connection from origin in development mode: ${origin}`);
-        return true;
-      }
-      
       // Check against allowed origins patterns
       const isAllowed = ALLOWED_ORIGINS.some(pattern => pattern.test(origin));
       

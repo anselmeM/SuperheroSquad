@@ -47,7 +47,7 @@ export function handleApiError(res: Response, error: ApiError, resource: string,
     });
   }
 
-  logger.error(`Unexpected error for ${resource} ${resourceId || ""}:`, error);
+  logger.error(`Unexpected error for ${resource}${resourceId ? ` ${resourceId}` : ''}:`, error);
   return res.status(status).json({
     error: "Internal Server Error",
     message: `An unexpected error occurred while processing your request for ${resource}`,
