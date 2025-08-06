@@ -32,11 +32,27 @@ export function handleApiError(res: Response, error: ApiError, resource: string,
 
   if (error.response) {
     const statusCode = error.response.status || 502;
-    return res.status(statusCode).json({
-      error: `External API error for ${resource}`,
-      message: error.message || `Error from ${resource} API`,
-      details: error.response,
-    });
+    if (statusCode === 404) {
+      return res.status(404).json({
+        error: `${resource} Not Found`,
+        message: `No ${resource} found with ID: ${resourceId}`
+      });
+    } else if (statusCode === 401 || statusCode === 403) {
+      return res.status(502).json({
+        error: "API Authentication Error",
+        message: "Could not authenticate with the Superhero API. The API key may be invalid or expired."
+      });
+    } else if (statusCode === 429) {
+      return res.status(503).json({
+        error: "API Rate Limit Exceeded",
+        message: "The Superhero API rate limit has been exceeded. Please try again later."
+      });
+    } else {
+      return res.status(502).json({
+        error: "External API Error",
+        message: `The Superhero API returned an error: ${statusCode} ${error.response.statusText}`
+      });
+    }
   }
 
   if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {

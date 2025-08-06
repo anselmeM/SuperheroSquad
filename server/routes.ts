@@ -128,39 +128,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Check for HTTP error status codes from the external API
       if (!response.ok) {
-        const statusCode = response.status;
-        const statusText = response.statusText || await response.text().catch(() => "Unknown error"); // Read body for potential error message
-        
-        logger.error(`API HTTP Error: ${statusCode} ${statusText}`);
-        
-        // Map external API status codes to appropriate client responses
-        // 404 -> 404 Not Found
-        // 401/403 -> 502 Bad Gateway (API key issues)
-        // 429 -> 503 Service Unavailable (rate limiting)
-        // Other -> 502 Bad Gateway
-        if (statusCode === 404) {
-          return res.status(404).json({ 
-            error: "Hero Not Found", 
-            message: `No superhero found with ID: ${id}` 
-          });
-        } else if (statusCode === 401 || statusCode === 403) {
-          return res.status(502).json({ 
-            error: "API Authentication Error", 
-            message: "Could not authenticate with the Superhero API. The API key may be invalid or expired."
-          });
-        } else if (statusCode === 429) {
-          return res.status(503).json({ 
-            error: "API Rate Limit Exceeded", 
-            message: "The Superhero API rate limit has been exceeded. Please try again later."
-          });
-        } else {
-          return res.status(502).json({ 
-            error: "External API Error", 
-            message: `The Superhero API returned an error: ${statusCode} ${statusText}`
-          });
-        }
+        const error: any = new Error(`API HTTP Error: ${response.status} ${response.statusText}`);
+        error.response = { status: response.status, statusText: response.statusText };
+        throw error;
       }
       
       // Try parsing the successful response
@@ -249,39 +220,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Check for HTTP error status codes from the external API
       if (!response.ok) {
-        const statusCode = response.status;
-        const statusText = response.statusText || await response.text().catch(() => "Unknown error");
-        
-        logger.error(`Search API HTTP Error: ${statusCode} ${statusText} for query: "${query}"`);
-        
-        // Map external API status codes to appropriate client responses
-        // 404 -> 404 Not Found (expected for search with no results)
-        // 401/403 -> 502 Bad Gateway (API key issues)
-        // 429 -> 503 Service Unavailable (rate limiting)
-        // Other -> 502 Bad Gateway
-        if (statusCode === 404) {
-          return res.status(404).json({ 
-            error: "No Results Found", 
-            message: `No superheroes match the search query: "${query}"`
-          });
-        } else if (statusCode === 401 || statusCode === 403) {
-          return res.status(502).json({ 
-            error: "API Authentication Error", 
-            message: "Could not authenticate with the Superhero API. The API key may be invalid or expired."
-          });
-        } else if (statusCode === 429) {
-          return res.status(503).json({ 
-            error: "API Rate Limit Exceeded", 
-            message: "The Superhero API rate limit has been exceeded. Please try again later."
-          });
-        } else {
-          return res.status(502).json({ 
-            error: "External API Error", 
-            message: `The Superhero API returned an error: ${statusCode} ${statusText}`
-          });
-        }
+        const error: any = new Error(`API HTTP Error: ${response.status} ${response.statusText}`);
+        error.response = { status: response.status, statusText: response.statusText };
+        throw error;
       }
       
       // Try parsing the successful response
