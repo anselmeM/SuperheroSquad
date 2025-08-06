@@ -7,7 +7,8 @@
     "node": "22.x"
   },
   "scripts": {
-    "dev": "tsx server/index.ts",
+    "dev:server": "tsx server/index.ts",
+    "dev:client": "vite",
     "build": "node build.mjs",
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc",
