@@ -1,3 +1,4 @@
+// server/vite.ts
 import express, { type Express } from "express";
 import fs from "fs";
 import path, { dirname } from "path";
@@ -6,7 +7,7 @@ import { createServer as createViteServer, createLogger } from "vite";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 import { type Server } from "http";
-import viteConfig from "../vite.config";
+import viteConfig from "../vite.config"; // Base config
 import { nanoid } from "nanoid";
 
 const viteLogger = createLogger();
@@ -22,33 +23,30 @@ export function log(message: string, source = "express") {
   console.log(`${formattedTime} [${source}] ${message}`);
 }
 
-// Renamed 'server' parameter to 'httpServer' for clarity
 export async function setupVite(app: Express, httpServer: Server) {
+
   // Define server options explicitly
   const serverOptions = {
-    host: '0.0.0.0', // Necessary for Replit to bind correctly
-    port: 5000,      // The internal port your Express server runs on
+    host: '0.0.0.0', // For the main server binding
+    port: 5000,      // For the main server binding
     middlewareMode: true,
     hmr: {
-      server: httpServer, // Pass the HTTP server instance
+      server: httpServer, // The http server instance
       host: '0.0.0.0',    // Explicitly bind HMR websocket server to all interfaces
-      port: 5000,         // The port the HMR WebSocket server listens on internally
-      // Explicitly tell the client which port to connect to
-      // Replit typically proxies HTTPS/WSS traffic on port 443
-      clientPort: 443,
-      // Explicitly set the protocol for the client (Replit uses wss)
-      protocol: 'wss',
-      // You could optionally try setting the host if needed, but the proxy usually handles this
-      // host: 'localhost',
+      port: 5000,         // Internal HMR listener port
+      clientPort: 443,    // External port client connects to (Replit HTTPS)
+      protocol: 'wss',    // External protocol client uses (Replit HTTPS)
     },
- 
-    // allowedHosts: true, // Often not needed when middlewareMode is true and handled by proxy
   };
+
   const vite = await createViteServer({
     // Spread base config from vite.config.ts first
     ...viteConfig,
     // Ensure configFile is false so it doesn't reload and overwrite server options
     configFile: false,
+    // Apply the explicit server/HMR options defined above
+    server: serverOptions,
+    // Override customLogger here if needed (or keep as is)
     customLogger: {
       ...viteLogger,
       error: (msg, options) => {
@@ -56,24 +54,16 @@ export async function setupVite(app: Express, httpServer: Server) {
         process.exit(1);
       },
     },
-    // Pass the explicit server options
-    server: serverOptions,
     appType: "custom",
   });
 
   app.use(vite.middlewares);
+
+  // ... rest of the setupVite function remains the same ...
   app.use("*", async (req, res, next) => {
     const url = req.originalUrl;
-
     try {
-      const clientTemplate = path.resolve(
-        __dirname,
-        "..",
-        "client",
-        "index.html",
-      );
-
-      // always reload the index.html file from disk incase it changes
+      const clientTemplate = path.resolve(__dirname, "..", "client", "index.html");
       let template = await fs.promises.readFile(clientTemplate, "utf-8");
       template = template.replace(
         `src="/src/main.tsx"`,
@@ -90,6 +80,7 @@ export async function setupVite(app: Express, httpServer: Server) {
   });
 }
 
+// ... (serveStatic function remains the same) ...
 export function serveStatic(app: Express) {
   const distPath = path.resolve(__dirname, "..", "dist", "public"); // Corrected path relative to server/vite.ts
 
