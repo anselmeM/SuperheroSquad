@@ -1,5 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
 import RateLimit from 'express-rate-limit';
+import MemoryStore from 'memorystore';
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { ZodError } from "zod";
@@ -9,12 +10,23 @@ import { appConfig, createLogger } from "./utils/config";
 const logger = createLogger('server');
 
 const app = express();
+app.set('trust proxy', 1);
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 const limiter = RateLimit({
+  store: new (MemoryStore(RateLimit))({
+    checkPeriod: 86400000 // prune expired entries every 24h
+  }),
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // max 100 requests per windowMs
+  message: {
+    status: 429,
+    error: 'Too Many Requests',
+    message: 'You have exceeded the 100 requests in 15 minutes limit!',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 app.use(limiter);
 
