@@ -135,9 +135,8 @@ export class InMemoryCacheProvider<T> implements CacheService<T> {
       const item = this.cache.get(key);
       // Check for expiry directly to avoid skewing cache stats (e.g., `misses` count).
       if (item && now > item.expiry) {
-        if (this.cache.delete(key)) {
-          removedCount++;
-        }
+        this.cache.delete(key);
+        removedCount++;
       }
     }
     
