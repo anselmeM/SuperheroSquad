@@ -40,6 +40,7 @@ export function setupViteHmrInterceptor() {
     // 3. Monitor network requests to intercept Vite's WebSocket connections
     const originalWebSocket = window.WebSocket;
     window.WebSocket = function(url: string | URL, protocols?: string | string[]) {
+      logger.info('Intercepting WebSocket connection:', url);
       try {
         // Convert URL object to string for inspection
         const urlStr = url.toString();
