@@ -1,11 +1,9 @@
 /**
  * API Routes Module
- * 
- * This module defines all the API endpoints for the superhero application.
+ * * This module defines all the API endpoints for the superhero application.
  * It includes endpoints for searching heroes, fetching hero details, and retrieving cache statistics.
  * The module also sets up WebSocket connections for real-time updates.
- * 
- * Features:
+ * * Features:
  * - REST API endpoints for hero search and detail retrieval
  * - In-memory caching with TTL (Time To Live) for performance optimization
  * - Cache statistics tracking and reporting
@@ -78,8 +76,7 @@ function scheduleCacheCleanup() {
 export async function registerRoutes(app: Express): Promise<Server> {
   /**
    * GET /api/cache-stats
-   * 
-   * Returns current cache statistics including size, hits, misses, and hit rate
+   * * Returns current cache statistics including size, hits, misses, and hit rate
    * Used by the dashboard to display cache performance metrics
    */
   app.get("/api/cache-stats", (req, res) => {
@@ -95,11 +92,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   /**
    * GET /api/hero/:id
-   * 
-   * Retrieves detailed information about a specific superhero by ID
+   * * Retrieves detailed information about a specific superhero by ID
    * Uses caching to improve performance for frequently accessed heroes
-   * 
-   * @param id The superhero ID to retrieve
+   * * @param id The superhero ID to retrieve
    * @returns Complete superhero object with all available information
    */
   app.get("/api/hero/:id", async (req, res) => {
@@ -230,12 +225,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   /**
    * GET /api/search
-   * 
-   * Searches for superheroes matching the provided query
+   * * Searches for superheroes matching the provided query
    * Implements caching strategies based on query length
    * Optimizes auto-suggestion requests for better performance
-   * 
-   * @param query The search term to look for
+   * * @param query The search term to look for
    * @param expire (Optional) If true, sets a short TTL for testing expiry
    * @param ttl (Optional) Custom TTL in milliseconds for testing, used with expire=true
    * @returns Array of superheroes matching the search criteria
@@ -449,11 +442,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   /**
    * GET /api/cleanup
-   * 
-   * Manually triggers a cache cleanup with the specified sampling parameters
+   * * Manually triggers a cache cleanup with the specified sampling parameters
    * This is primarily for testing and debugging purposes
-   * 
-   * @param sampleSize Percentage of cache to check (0-1), defaults to 0.2 (20%)
+   * * @param sampleSize Percentage of cache to check (0-1), defaults to 0.2 (20%)
    * @param minSample Minimum number of items to check regardless of percentage
    * @param maxSample Maximum number of items to check at once
    * @returns Statistics about the cleanup operation
@@ -509,11 +500,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   /**
    * GET /api/test-error/:type
-   * 
-   * Test endpoint that triggers different types of errors
+   * * Test endpoint that triggers different types of errors
    * Used to demonstrate the enhanced error handler functionality
-   * 
-   * @param type The type of error to simulate (client, server, validation, api)
+   * * @param type The type of error to simulate (client, server, validation, api)
    * @returns Always throws an error of the specified type
    */
   app.get("/api/test-error/:type", (req, res, next) => {
@@ -572,8 +561,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   /**
    * WebSocket Server Setup
-   * 
-   * Provides real-time updates for cache statistics and other dynamic data
+   * * Provides real-time updates for cache statistics and other dynamic data
    * Uses the same HTTP server as the REST API but with a different path
    * NOTE: We use '/ws' path to avoid conflicts with Vite's HMR websocket
    */
@@ -601,8 +589,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   /**
    * Validates if a connection origin is allowed
    * Helps prevent cross-site WebSocket hijacking attacks
-   * 
-   * @param origin The origin header from the connection request
+   * * @param origin The origin header from the connection request
    * @returns Boolean indicating if the origin is permitted
    */
   function validateOrigin(origin: string): boolean {
@@ -684,6 +671,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Reset connection timeout on activity
           clearTimeout(connectionTimeout);
+        } else if (parsedMessage.type === 'get-stats') { // Handle explicit request for stats
+          const stats = {
+            type: 'cache-stats',
+            timestamp: Date.now(),
+            hero: heroCache.getStats(),
+            search: searchCache.getStats()
+          };
+          ws.send(JSON.stringify(stats));
         }
       } catch (error) {
         logger.error('Error processing WebSocket message:', error);
@@ -719,8 +714,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   /**
    * Periodic cache statistics broadcaster
-   * 
-   * Sends updated cache statistics to all connected clients every minute
+   * * Sends updated cache statistics to all connected clients every minute
    * This enables real-time dashboard updates without polling the API
    */
   setInterval(() => {

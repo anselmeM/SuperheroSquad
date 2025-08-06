@@ -61,6 +61,7 @@ export function useCompare() {
       const parsed = saved ? JSON.parse(saved) : [];
       // Ensure each hero in the compare list has valid powerstats
       const validatedList = parsed.map(ensureValidSuperhero);
+      logger.debug(`Loaded ${validatedList.length} heroes into compare list from localStorage`);
       return validatedList;
     } catch (error) {
       logger.error('Failed to load compare list from localStorage', error);
@@ -77,6 +78,7 @@ export function useCompare() {
   useEffect(() => {
     try {
       localStorage.setItem(COMPARE_KEY, JSON.stringify(compareList));
+      logger.debug(`Saved ${compareList.length} heroes to compare list in localStorage`);
     } catch (error) {
       logger.error('Failed to save compare list to localStorage:', error);
     }
@@ -99,6 +101,7 @@ export function useCompare() {
       
       // Ensure the hero has valid powerstats before adding
       const validHero = ensureValidSuperhero(hero);
+      logger.info(`Added hero to compare: ${hero.name}`);
       return [...prev, validHero];
     });
   }, [compareIdSet]);  // Only depends on the ID set, not the full list
@@ -106,12 +109,23 @@ export function useCompare() {
   // Memoized function to remove a hero from the compare list
   const removeFromCompare = useCallback((heroId: string) => {
     logger.debug('Removing hero from compare:', heroId);
-    setCompareList(prev => prev.filter(h => h.id !== heroId));
+    setCompareList(prev => {
+      const heroToRemove = prev.find(h => h.id === heroId);
+      const result = prev.filter(h => h.id !== heroId);
+      if (result.length !== prev.length) {
+        logger.info(`Removed hero from compare: ${heroToRemove?.name || heroId}`);
+      } else {
+        logger.warn(`Attempted to remove non-existent hero ID from compare: ${heroId}`);
+      }
+      return result;
+    });
   }, []);  // No dependencies as it just uses the heroId parameter
 
   // Highly optimized function to check if a hero is in the compare list
   const isInCompare = useCallback((heroId: string): boolean => {
-    return compareIdSet.has(heroId);
+    const result = compareIdSet.has(heroId);
+    logger.debug(`Checking if hero ${heroId} is in compare: ${result}`);
+    return result;
   }, [compareIdSet]);  // Only depends on the ID set which only changes when heroes are added/removed
 
   // Memoized function to clear the compare list
