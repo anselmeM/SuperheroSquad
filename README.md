@@ -26,6 +26,7 @@ A dynamic web application for superhero enthusiasts to search, filter, and compa
 
 - **Backend**:
   - Node.js with Express
+  - Rate limiting to prevent DoS attacks
   - In-memory caching system with TTL (Time To Live)
   - WebSockets for real-time updates to cache statistics
 
@@ -33,6 +34,8 @@ A dynamic web application for superhero enthusiasts to search, filter, and compa
   - Zod for schema validation
   - Lucide React for icons
   - React Query for data fetching
+  - Express Rate Limit for DoS protection
+  - Memorystore for in-memory cache storage
   - Custom hooks for shared functionality
 
 ## 📸 Screenshots
@@ -121,6 +124,12 @@ The application uses the SuperHero API to fetch hero data. The backend includes:
 - **Custom hooks**: Encapsulated logic for favorites, comparison, and other features
 - **TypeScript**: Used throughout for type safety and better developer experience
 - **Component reusability**: Components designed to be reusable across the application
+
+## 🔒 Security
+
+- **Rate Limiting**: The API is protected against DoS attacks with a rate limiter that allows 100 requests per 15 minutes.
+- **SSRF Protection**: The application validates the `id` parameter in the `/api/hero/:id` route to prevent Server-Side Request Forgery (SSRF) attacks.
+- **WebSocket Origin Validation**: The WebSocket server validates the origin of incoming connections to prevent cross-site WebSocket hijacking attacks.
 
 ## 📄 License
 
